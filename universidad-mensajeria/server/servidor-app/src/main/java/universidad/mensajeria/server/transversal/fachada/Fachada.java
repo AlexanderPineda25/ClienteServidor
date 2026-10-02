@@ -1,11 +1,14 @@
 package universidad.mensajeria.server.transversal.fachada;
 
+import universidad.mensajeria.common.interno.ArchivoDTO;
 import universidad.mensajeria.common.interno.EstadoServidor;
 import universidad.mensajeria.common.interno.InformeDTO;
 import universidad.mensajeria.common.interno.InformeFiltroDTO;
+import universidad.mensajeria.common.interno.MensajeResumenDTO;
 import universidad.mensajeria.common.interno.UsuarioResumen;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -52,4 +55,23 @@ public interface Fachada {
 
     /** Informe 4: bitácora de auditoría [RF-S26]. */
     InformeDTO informeAuditoria(InformeFiltroDTO filtro);
+
+    /**
+     * Detalle crudo de mensajes (contenido + hash + etapas) para la vista
+     * escritorio: muestra texto completo, previsualiza imagenes y lista los
+     * filtros aplicados sin pasar por el formateo resumido del Informe 3.
+     */
+    default List<MensajeResumenDTO> mensajesDetalle(InformeFiltroDTO filtro) {
+        return List.of();
+    }
+
+    /** Metadatos del archivo asociado a un mensaje (para previsualizar). */
+    default Optional<ArchivoDTO> archivoParaVista(long archivoId) {
+        return Optional.empty();
+    }
+
+    /** Bytes del archivo asociado (miniatura en la vista escritorio). */
+    default byte[] bytesArchivoParaVista(long archivoId) {
+        throw new UnsupportedOperationException("descarga no disponible");
+    }
 }

@@ -226,6 +226,28 @@ public class FachadaDeServicios implements Fachada, SalidaClienteServidor.Fachad
         return servicios.armarInformeAuditoria(eventos.consultar(filtro), filtro);
     }
 
+    @Override
+    public java.util.List<universidad.mensajeria.common.interno.MensajeResumenDTO> mensajesDetalle(
+            InformeFiltroDTO filtro) {
+        return mensajes.detalle(filtro);
+    }
+
+    @Override
+    public java.util.Optional<universidad.mensajeria.common.interno.ArchivoDTO> archivoParaVista(
+            long archivoId) {
+        return almacenar.buscarArchivoPorId(archivoId);
+    }
+
+    @Override
+    public byte[] bytesArchivoParaVista(long archivoId) {
+        try {
+            return almacenar.leerBytesArchivo(archivoId);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("no se pudo leer el archivo " + archivoId
+                    + ": " + e.getMessage(), e);
+        }
+    }
+
     private Map<String, FechasUsuarioDTO> fechasPorCodigo() {
         Map<String, FechasUsuarioDTO> fechas = new HashMap<>();
         for (FechasUsuarioDTO fecha : almacenar.fechasUsuarios()) {

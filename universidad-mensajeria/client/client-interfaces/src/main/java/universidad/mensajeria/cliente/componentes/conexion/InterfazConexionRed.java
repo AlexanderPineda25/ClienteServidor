@@ -37,6 +37,18 @@ public interface InterfazConexionRed {
         return enviarImagen(remitente, destinatario, nombreArchivo, mime, contenidoBase64);
     }
 
+    /** Archivo generico (PDF, docs, zip): mismo framing que imagen, otro tipo. */
+    default Mensaje enviarArchivo(String remitente, String destinatario, String nombreArchivo,
+                                  String mime, String contenidoBase64) throws IOException {
+        throw new IOException("envio de archivos no soportado");
+    }
+
+    default Mensaje enviarArchivo(String id, String remitente, String destinatario,
+                                  String nombreArchivo, String mime, String contenidoBase64)
+            throws IOException {
+        return enviarArchivo(remitente, destinatario, nombreArchivo, mime, contenidoBase64);
+    }
+
     Mensaje difundir(String remitente, String contenido) throws IOException;
 
     default Mensaje difundir(String id, String remitente, String contenido) throws IOException {

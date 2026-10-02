@@ -159,6 +159,17 @@ public class AlmacenarInformacion implements InterfazAlmacenarInformacion {
         return persistencia.buscarArchivoPorHash(hashSha256);
     }
 
+    @Override
+    public byte[] leerBytesArchivo(long archivoId) throws IOException {
+        ArchivoDTO archivo = persistencia.buscarArchivoPorId(archivoId)
+                .orElseThrow(() -> new IOException("archivo inexistente: " + archivoId));
+        java.nio.file.Path ruta = uploadDir.resolve(archivo.ruta()).normalize();
+        if (!ruta.startsWith(uploadDir.toAbsolutePath().normalize())) {
+            throw new IOException("ruta de archivo invalida");
+        }
+        return Files.readAllBytes(ruta);
+    }
+
     // ---- auditoria ----
 
     @Override

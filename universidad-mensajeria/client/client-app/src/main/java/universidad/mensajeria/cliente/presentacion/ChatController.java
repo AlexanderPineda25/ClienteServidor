@@ -108,7 +108,7 @@ public final class ChatController {
         listaUsuarios.setCellFactory(v -> new UsuarioCell(this::nombreVisible));
         listaMensajes.setCellFactory(v -> new MensajeCell(this::cargarImagenVisible,
                 this::reintentarImagen, this::alResponder, this::nombreVisible,
-                idsImagenFallida::contains));
+                idsImagenFallida::contains, this::alDescargarArchivo));
         comboFiltro.setItems(FXCollections.observableArrayList("Todos", "Conectados", "No leídos"));
         comboFiltro.getSelectionModel().selectFirst();
         campoBuscar.textProperty().addListener((o, a, b) -> aplicarFiltro());
@@ -233,8 +233,14 @@ public final class ChatController {
                 boolean enRed = true;
                 if (!contenido.isBlank()) enRed = fachada.enviarTexto(destino, contenido);
                 if (imagen != null) {
-                    enRed = fachada.enviarImagen(destino, imagen, nombre,
-                            "image/" + extension(nombre)) && enRed;
+                    String ext = extension(nombre);
+                    if (EXT_IMAGEN.contains(ext)) {
+                        enRed = fachada.enviarImagen(destino, imagen, nombre,
+                                "image/" + ext) && enRed;
+                    } else {
+                        enRed = fachada.enviarArchivo(destino, imagen, nombre,
+                                mimeDe(nombre)) && enRed;
+                    }
                 }
                 return enRed;
             }
@@ -282,9 +288,11 @@ public final class ChatController {
     @FXML
     private void alElegirImagen() {
         FileChooser elegidor = new FileChooser();
-        elegidor.setTitle("Elegir imagen");
-        elegidor.getExtensionFilters().add(new FileChooser.ExtensionFilter(
-                "Imágenes", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+        elegidor.setTitle("Elegir archivo (imagen, PDF, documento...)");
+        elegidor.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Todos", "*.*"),
+                new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"),
+                new FileChooser.ExtensionFilter("Documentos", "*.pdf", "*.txt", "*.docx", "*.xlsx", "*.pptx", "*.zip"));
         cargarArchivo(elegidor.showOpenDialog(listaMensajes.getScene().getWindow()));
     }
 
@@ -303,32 +311,33 @@ public final class ChatController {
 
     private void cargarArchivo(File archivo) {
         if (archivo == null) return;
-        if (!EXT_IMAGEN.contains(extension(archivo.getName()))) {
-            estado("Solo se admiten imágenes PNG, JPG o GIF");
-            return;
-        }
         int version = ++versionAdjunto;
         Task<byte[]> tarea = new Task<>() {
             @Override protected byte[] call() throws Exception {
                 byte[] bytes = Files.readAllBytes(archivo.toPath());
-                if (bytes.length > 10 * 1024 * 1024) throw new IllegalStateException("Máximo 10 MiB");
+                if (bytes.length > 50 * 1024 * 1024) throw new IllegalStateException("Máximo 50 MiB");
                 return bytes;
             }
         };
         tarea.setOnSucceeded(e -> {
             if (version != versionAdjunto) return;
-            byte[] bytesImagen = tarea.getValue();
-            imagenLista = bytesImagen;
+            byte[] bytesArchivo = tarea.getValue();
+            imagenLista = bytesArchivo;
             nombreImagenLista = archivo.getName();
+            boolean esImagen = EXT_IMAGEN.contains(extension(archivo.getName()));
             Task<Image> preview = new Task<>() {
                 @Override protected Image call() {
-                    return new Image(new java.io.ByteArrayInputStream(bytesImagen), 120, 0, true, true);
+                    if (!esImagen) {
+                        return null;
+                    }
+                    return new Image(new java.io.ByteArrayInputStream(bytesArchivo), 120, 0, true, true);
                 }
             };
             preview.setOnSucceeded(done -> {
                 if (version != versionAdjunto) return;
                 vistaPrevia.setImage(preview.getValue());
-                etiquetaAdjunto.setText(nombreImagenLista);
+                etiquetaAdjunto.setText(nombreImagenLista
+                        + (esImagen ? "" : " (archivo generico)"));
                 adjuntoDisponible.set(true);
                 barraAdjunto.setVisible(true);
                 barraAdjunto.setManaged(true);
@@ -336,14 +345,14 @@ public final class ChatController {
             });
             fachada.fondo().execute(preview);
         });
-        tarea.setOnFailed(e -> estado("No se pudo leer la imagen: " + mensaje(tarea.getException())));
+        tarea.setOnFailed(e -> estado("No se pudo leer el archivo: " + mensaje(tarea.getException())));
         fachada.fondo().execute(tarea);
     }
 
     private void configurarDragDrop() {
         listaMensajes.setOnDragOver(e -> {
             Dragboard db = e.getDragboard();
-            if (db.hasFiles() && db.getFiles().stream().anyMatch(f -> EXT_IMAGEN.contains(extension(f.getName())))) {
+            if (db.hasFiles() && !db.getFiles().isEmpty()) {
                 e.acceptTransferModes(TransferMode.COPY);
             }
             e.consume();
@@ -353,7 +362,7 @@ public final class ChatController {
             boolean ok = false;
             if (db.hasFiles()) {
                 for (File f : db.getFiles()) {
-                    if (EXT_IMAGEN.contains(extension(f.getName()))) {
+                    if (f.isFile()) {
                         cargarArchivo(f);
                         ok = true;
                         break;
@@ -547,6 +556,41 @@ public final class ChatController {
         cargarImagenVisible(item);
     }
 
+    private void alDescargarArchivo(MensajeLocal item) {
+        if (item == null) {
+            return;
+        }
+        javafx.stage.FileChooser elegidor = new javafx.stage.FileChooser();
+        elegidor.setTitle("Guardar archivo");
+        elegidor.setInitialFileName(item.nombreArchivo() == null ? "archivo.bin" : item.nombreArchivo());
+        File destino = elegidor.showSaveDialog(listaMensajes.getScene().getWindow());
+        if (destino == null) {
+            return;
+        }
+        estado("Descargando " + item.nombreArchivo() + "…");
+        Task<Void> tarea = new Task<>() {
+            @Override protected Void call() throws Exception {
+                byte[] bytes;
+                try {
+                    bytes = fachada.descargarImagen(item.idMensaje());
+                } catch (Exception e) {
+                    // descargarImagen resuelve por archivoId; si falla, pedir descarga directa
+                    universidad.mensajeria.common.tipos.Mensaje resp =
+                            fachada.descargarArchivo(item.archivoId());
+                    if (resp == null || resp.contenidoImagen() == null) {
+                        throw new IllegalStateException("descarga no disponible");
+                    }
+                    bytes = Base64.getDecoder().decode(resp.contenidoImagen());
+                }
+                Files.write(destino.toPath(), bytes);
+                return null;
+            }
+        };
+        tarea.setOnSucceeded(e -> estado("Archivo guardado: " + destino.getName()));
+        tarea.setOnFailed(e -> estado("No se pudo descargar: " + mensaje(tarea.getException())));
+        fachada.fondo().execute(tarea);
+    }
+
     private void pintarPagina(String otro, List<MensajeLocal> pagina, int total, int off) {
         if (otro == null) return;
         for (int i = 0; i < pagina.size(); i++) {
@@ -659,5 +703,23 @@ public final class ChatController {
     private static String extension(String nombre) {
         int punto = nombre == null ? -1 : nombre.lastIndexOf('.');
         return punto < 0 ? "" : nombre.substring(punto + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private static String mimeDe(String nombre) {
+        String ext = extension(nombre);
+        return switch (ext) {
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "gif" -> "image/gif";
+            case "bmp" -> "image/bmp";
+            case "webp" -> "image/webp";
+            case "pdf" -> "application/pdf";
+            case "txt" -> "text/plain";
+            case "zip" -> "application/zip";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            default -> "application/octet-stream";
+        };
     }
 }

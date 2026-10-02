@@ -39,17 +39,28 @@ public final class MensajeCell extends ListCell<MensajeLocal> {
     private final Consumer<MensajeLocal> alResponder;
     private final Function<String, String> nombreVisible;
     private final Predicate<String> imagenFallida;
+    private final Consumer<MensajeLocal> alDescargar;
 
     public MensajeCell(Consumer<MensajeLocal> alVerImagen,
                        Consumer<MensajeLocal> alReintentarImagen,
                        Consumer<MensajeLocal> alResponder,
                        Function<String, String> nombreVisible,
                        Predicate<String> imagenFallida) {
+        this(alVerImagen, alReintentarImagen, alResponder, nombreVisible, imagenFallida, m -> { });
+    }
+
+    public MensajeCell(Consumer<MensajeLocal> alVerImagen,
+                       Consumer<MensajeLocal> alReintentarImagen,
+                       Consumer<MensajeLocal> alResponder,
+                       Function<String, String> nombreVisible,
+                       Predicate<String> imagenFallida,
+                       Consumer<MensajeLocal> alDescargar) {
         this.alVerImagen = alVerImagen;
         this.alReintentarImagen = alReintentarImagen;
         this.alResponder = alResponder;
         this.nombreVisible = nombreVisible;
         this.imagenFallida = imagenFallida;
+        this.alDescargar = alDescargar == null ? m -> { } : alDescargar;
         getStyleClass().add("chat-message-cell");
     }
 
@@ -99,6 +110,18 @@ public final class MensajeCell extends ListCell<MensajeLocal> {
                 burbuja.getChildren().add(espera);
                 if (!fallo) alVerImagen.accept(item);
             }
+        } else if ("MENSAJE_ARCHIVO".equals(item.tipo())) {
+            String nombre = item.nombreArchivo() == null ? "Archivo" : item.nombreArchivo();
+            String tam = item.tamanoArchivo() != null ? " (" + item.tamanoArchivo() + " bytes)" : "";
+            Label titulo = new Label("📎 " + nombre + tam);
+            titulo.getStyleClass().add("image-caption");
+            titulo.setWrapText(true);
+            burbuja.getChildren().add(titulo);
+            Button descargar = new Button("⬇ Descargar");
+            descargar.getStyleClass().add("reply-button");
+            descargar.setTooltip(new Tooltip("Descargar archivo"));
+            descargar.setOnAction(e -> alDescargar.accept(item));
+            burbuja.getChildren().add(descargar);
         } else {
             Label cuerpo = new Label(item.contenido() == null ? "" : item.contenido());
             cuerpo.setWrapText(true);

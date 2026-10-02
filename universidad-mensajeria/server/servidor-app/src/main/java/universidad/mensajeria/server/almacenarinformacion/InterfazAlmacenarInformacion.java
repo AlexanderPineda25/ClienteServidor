@@ -71,6 +71,14 @@ public interface InterfazAlmacenarInformacion {
 
     Optional<ArchivoDTO> buscarArchivoPorHash(String hashSha256);
 
+    /**
+     * Bytes del archivo en uploads/ para previsualizar en la vista escritorio.
+     * Por defecto no soportado (los mocks de tests lo ignoran).
+     */
+    default byte[] leerBytesArchivo(long archivoId) throws IOException {
+        throw new IOException("lectura no soportada");
+    }
+
     // ---- auditoria ----
 
     long registrarAccion(TipoAccion tipo, String descripcion,

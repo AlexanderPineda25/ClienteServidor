@@ -162,6 +162,23 @@ public final class ConexionCliente implements InterfazConexionRed {
     }
 
     @Override
+    public Mensaje enviarArchivo(String remitente, String destinatario, String nombreArchivo,
+                                 String mime, String contenidoBase64) throws IOException {
+        return pedir(Mensaje.builder().tipo(TipoMensaje.MENSAJE_ARCHIVO)
+                .remitente(remitente).destinatario(destinatario).nombreArchivo(nombreArchivo)
+                .mime(mime).contenidoImagen(contenidoBase64).build());
+    }
+
+    @Override
+    public Mensaje enviarArchivo(String id, String remitente, String destinatario,
+                                 String nombreArchivo, String mime, String contenidoBase64)
+            throws IOException {
+        return pedir(Mensaje.builder().tipo(TipoMensaje.MENSAJE_ARCHIVO).id(id)
+                .remitente(remitente).destinatario(destinatario).nombreArchivo(nombreArchivo)
+                .mime(mime).contenidoImagen(contenidoBase64).build());
+    }
+
+    @Override
     public Mensaje difundir(String remitente, String contenido) throws IOException {
         return pedir(Mensaje.builder().tipo(TipoMensaje.BROADCAST)
                 .remitente(remitente).contenido(contenido).build());
@@ -300,7 +317,7 @@ public final class ConexionCliente implements InterfazConexionRed {
             return;
         }
         switch (trama.tipo()) {
-            case MENSAJE_TEXTO, MENSAJE_IMAGEN, BROADCAST, SYNC_LOGIN,
+            case MENSAJE_TEXTO, MENSAJE_IMAGEN, MENSAJE_ARCHIVO, BROADCAST, SYNC_LOGIN,
                  IMAGE_FILTERED_RESULT, HISTORIAL_PAGE,
                  DESCARGAR_ARCHIVO_RESPUESTA, MENSAJE_ENTREGADO,
                  MENSAJE_LEIDO, PRESENCIA,

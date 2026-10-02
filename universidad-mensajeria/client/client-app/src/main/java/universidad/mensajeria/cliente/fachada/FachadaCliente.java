@@ -312,6 +312,45 @@ public final class FachadaCliente {
         }
     }
 
+    /** Chat 1-a-1 archivo generico (PDF, docs, zip): mismo flujo que imagen. */
+    public boolean enviarArchivo(String destinatario, byte[] bytes,
+                                 String nombreArchivo, String mime) throws Exception {
+        exigirSesion();
+        ValidacionCliente.destinatario(destinatario);
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("el archivo esta vacio");
+        }
+        String id = java.util.UUID.randomUUID().toString();
+        String ahora = LocalDateTime.now().toString();
+        String base64 = Base64.getEncoder().encodeToString(bytes);
+        historial.guardar(new MensajeLocal(id, codigoActual(), destinatario,
+                TipoMensaje.MENSAJE_ARCHIVO.name(), base64, null, null, null,
+                nombreArchivo, null, (long) bytes.length, ahora, true, true,
+                EstadoMensaje.PENDIENTE.name()));
+        try {
+            Mensaje resultado = red.enviarArchivo(id, codigoActual(), destinatario,
+                    nombreArchivo, mime == null ? "application/octet-stream" : mime, base64);
+            if (!Boolean.TRUE.equals(resultado.exito())) {
+                throw new IllegalStateException(resultado.mensajeError() != null
+                        ? resultado.mensajeError() : "envio rechazado");
+            }
+            if (resultado.archivoId() != null) {
+                historial.actualizarArchivoId(id, resultado.archivoId());
+            }
+            historial.marcarEstado(id, EstadoMensaje.ENVIADO.name());
+            return true;
+        } catch (IOException sinRed) {
+            historial.marcarEstado(id, EstadoMensaje.PENDIENTE.name());
+            historial.registrarPendiente(new PendienteEnvio(id,
+                    TipoMensaje.MENSAJE_ARCHIVO.name(), codigoActual(), destinatario,
+                    null, nombreArchivo, bytes, ahora, 0, sinRed.getMessage()));
+            return false;
+        } catch (RuntimeException rechazo) {
+            historial.marcarEstado(id, EstadoMensaje.ERROR.name());
+            throw rechazo;
+        }
+    }
+
     /** Broadcast a todos los conectados (req. servidor #9). */
     public void difundir(String contenido) throws Exception {
         exigirSesion();
@@ -589,6 +628,19 @@ public final class FachadaCliente {
                         historial.actualizarArchivoId(pendiente.id(), ack.archivoId());
                     }
                     historial.marcarEstado(pendiente.id(), EstadoMensaje.ENVIADO.name());
+                } else if (TipoMensaje.MENSAJE_ARCHIVO.name().equals(pendiente.tipo())) {
+                    String base64 = pendiente.payload() == null ? ""
+                            : Base64.getEncoder().encodeToString(pendiente.payload());
+                    Mensaje ack = red.enviarArchivo(pendiente.id(), pendiente.origen(), pendiente.destino(),
+                            pendiente.nombreArchivo(), "application/octet-stream", base64);
+                    if (!Boolean.TRUE.equals(ack.exito())) {
+                        throw new IllegalStateException(ack.mensajeError() != null
+                                ? ack.mensajeError() : "reenvio de archivo rechazado");
+                    }
+                    if (ack.archivoId() != null) {
+                        historial.actualizarArchivoId(pendiente.id(), ack.archivoId());
+                    }
+                    historial.marcarEstado(pendiente.id(), EstadoMensaje.ENVIADO.name());
                 } else {
                     Mensaje ack = red.enviarTexto(pendiente.id(), pendiente.origen(),
                             pendiente.destino(), pendiente.contenido());
@@ -664,6 +716,7 @@ public final class FachadaCliente {
                     }
                 } else if (mensaje.tipo() == TipoMensaje.MENSAJE_TEXTO
                         || mensaje.tipo() == TipoMensaje.MENSAJE_IMAGEN
+                        || mensaje.tipo() == TipoMensaje.MENSAJE_ARCHIVO
                         || mensaje.tipo() == TipoMensaje.BROADCAST
                         || mensaje.tipo() == TipoMensaje.SYNC_LOGIN) {
                     // Lo entrante siempre es (remitente → yo): así el broadcast
@@ -671,7 +724,8 @@ public final class FachadaCliente {
                     String yo = codigoActual();
                     String destino = yo != null ? yo : mensaje.destinatario();
                     String cuerpo = mensaje.contenido();
-                    if (mensaje.tipo() == TipoMensaje.MENSAJE_IMAGEN
+                    if ((mensaje.tipo() == TipoMensaje.MENSAJE_IMAGEN
+                            || mensaje.tipo() == TipoMensaje.MENSAJE_ARCHIVO)
                             && mensaje.contenidoImagen() != null) {
                         cuerpo = mensaje.contenidoImagen();
                     }

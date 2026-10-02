@@ -61,6 +61,14 @@ public final class AutenticarCaso {
     }
 
     public void autenticar(IdSesion sesion, String codigo, String contrasena, String idSolicitud) {
+        if (codigo != null && "SERVIDOR".equalsIgnoreCase(codigo.trim())) {
+            LOG.warn("Intento de login como cuenta de sistema SERVIDOR desde {}", sesion.direccionIp());
+            eventos.registrar(TipoAccion.LOGIN_FALLIDO, "Cuenta de sistema sin inicio de sesion",
+                    codigo, sesion.direccionIp(), null);
+            respuestas.fallo(sesion, idSolicitud, TipoMensaje.LOGIN_RESPUESTA,
+                    "SERVIDOR es buzon del sistema: no admite inicio de sesion");
+            return;
+        }
         if (!servicios.puedeIniciarSesion(codigo, conexiones.sesionesDe(codigo).size(),
                 conexiones.totalSesiones(), limites)) {
             LOG.warn("Limite de conexiones alcanzado para {}", codigo);
