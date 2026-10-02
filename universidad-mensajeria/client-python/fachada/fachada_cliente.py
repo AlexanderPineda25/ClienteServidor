@@ -98,25 +98,50 @@ class FachadaCliente:
         return conectados
 
     def listar_usuarios(self):
-        """Actualiza el directorio completo conservando la caché si falla la red."""
+        """Directorio completo desde LISTAR_USUARIOS_RESPUESTA.contenido (JSON).
+
+        El servidor envia el arreglo en `contenido`, no en `usuarios`
+        (ListarCaso.java, igual que lee FachadaCliente Java). Si la red
+        falla o el contenido es ilegible/vacio se conserva la cache local.
+        """
         self._exigir_sesion()
         resp = self.conexion.pedir({
             "tipo": "LISTAR_USUARIOS",
             "codigo": self.codigo_actual,
             "fechaHora": datetime.datetime.now().isoformat()
         })
-        usuarios = resp.get("usuarios") or []
+        contenido = resp.get("contenido")
+        if not contenido or not str(contenido).strip():
+            raise RuntimeError("directorio de usuarios no disponible")
+        try:
+            filas = json.loads(contenido)
+        except (TypeError, ValueError) as error:
+            raise RuntimeError("directorio de usuarios ilegible") from error
+        if not isinstance(filas, list):
+            raise RuntimeError("directorio de usuarios ilegible")
         ahora = datetime.datetime.now().isoformat()
-        for usuario in usuarios:
-            codigo = usuario.get("codigo")
-            if not codigo:
+        usuarios = []
+        for usuario in filas:
+            if not isinstance(usuario, dict):
                 continue
+            codigo = usuario.get("codigo")
+            if not codigo or not str(codigo).strip():
+                continue
+            usuarios.append({
+                "codigo": codigo,
+                "nombres": usuario.get("nombres") or "",
+                "apellidos": usuario.get("apellidos") or "",
+                "programa": usuario.get("programa") or "",
+                "conectado": bool(usuario.get("conectado")),
+            })
+        if not usuarios:
+            raise RuntimeError("directorio incompleto; se conserva la caché local")
+        for usuario in usuarios:
             self.historial.actualizar_cache_usuario(
-                codigo, usuario.get("nombres") or "", usuario.get("apellidos") or "",
-                usuario.get("programa") or "", int(bool(usuario.get("conectado"))),
-                usuario.get("fechaRegistro") or "", ahora)
+                usuario["codigo"], usuario["nombres"], usuario["apellidos"],
+                usuario["programa"], int(usuario["conectado"]), "", ahora)
         self.historial.marcar_conectados(
-            [u.get("codigo") for u in usuarios if u.get("conectado") and u.get("codigo")])
+            [u["codigo"] for u in usuarios if u["conectado"]])
         return self.historial.listar_cache_usuarios()
 
     def expulsar_otras_sesiones(self):

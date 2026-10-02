@@ -230,10 +230,18 @@ namespace Mensajeria.Fachada
             if (_conexion == null) throw new InvalidOperationException("ConectarAsync primero");
             var resp = await _conexion.Pedir(new Dictionary<string, object?>
                 { { "tipo", TipoMensaje.LISTAR_USUARIOS } }).ConfigureAwait(false);
-            var usuarios = new List<Dictionary<string, object>>();
-            if (resp.TryGetValue("usuarios", out var arr) && arr.ValueKind == JsonValueKind.Array)
+            // El servidor envia el directorio en `contenido` (JSON) — ListarCaso.java,
+            // igual que lee el cliente Java (FachadaCliente.sincronizarDirectorio).
+            string contenido = GetString(resp, "contenido") ?? "[]";
+            JsonDocument documento;
+            try { documento = JsonDocument.Parse(contenido); }
+            catch { return DirectorioLocal(); }
+            using (documento)
             {
-                foreach (var u in arr.EnumerateArray())
+                if (documento.RootElement.ValueKind != JsonValueKind.Array)
+                    return DirectorioLocal();
+                var usuarios = new List<Dictionary<string, object>>();
+                foreach (var u in documento.RootElement.EnumerateArray())
                 {
                     if (u.ValueKind != JsonValueKind.Object) continue;
                     string codigo = Texto(u, "codigo") ?? "";
@@ -251,11 +259,11 @@ namespace Mensajeria.Fachada
                         ["apellidos"] = apellidos, ["conectado"] = conectado
                     });
                 }
+                if (usuarios.Count == 0) return DirectorioLocal();
                 Cache?.MarcarConectados(usuarios.Where(u => (bool)u["conectado"])
                     .Select(u => (string)u["codigo"]).ToList());
                 return usuarios;
             }
-            return DirectorioLocal();
         }
 
         public async Task MarcarLeidosAsync(string otroUsuario)

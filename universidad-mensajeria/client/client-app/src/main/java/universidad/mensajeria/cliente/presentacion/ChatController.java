@@ -74,7 +74,6 @@ public final class ChatController {
     @FXML private ImageView vistaPrevia;
     @FXML private Button botonMas;
     @FXML private Button botonEnviar;
-    @FXML private Button botonDifundir;
     @FXML private Label bannerOffline;
 
     private FachadaCliente fachada;
@@ -97,6 +96,7 @@ public final class ChatController {
     private int versionAdjunto;
     private Timeline respaldo;
     private boolean refrescoEnCurso;
+    private boolean refrescoForzadoPendiente;
     private boolean cierreRemotoProcesado;
     private long ultimoRefrescoMs;
     private ObservableList<RecienteChat> todos = FXCollections.observableArrayList();
@@ -138,10 +138,6 @@ public final class ChatController {
                 () -> !puedeEnviar(campoEntrada.getText(), imagenLista != null,
                         hayDestino.get(), enviando.get()),
                 campoEntrada.textProperty(), enviando, adjuntoDisponible, hayDestino));
-        botonDifundir.disableProperty().bind(Bindings.createBooleanBinding(
-                () -> enviando.get() || campoEntrada.getText() == null
-                        || campoEntrada.getText().isBlank(),
-                campoEntrada.textProperty(), enviando));
         fachada.desuscribir(alEntrar);
         fachada.suscribir(alEntrar);
         configurarDragDrop();
@@ -377,20 +373,6 @@ public final class ChatController {
     }
 
     @FXML
-    private void alDifundir() {
-        String texto = campoEntrada.getText() == null ? "" : campoEntrada.getText().trim();
-        if (texto.isBlank() || enviando.get()) return;
-        enviando.set(true);
-        campoEntrada.clear();
-        Task<Void> tarea = new Task<>() {
-            @Override protected Void call() throws Exception { fachada.difundir(texto); return null; }
-        };
-        tarea.setOnSucceeded(e -> { enviando.set(false); estado("Difundido a todos"); actualizarFondo(); });
-        tarea.setOnFailed(e -> { enviando.set(false); estado("No se pudo difundir: " + mensaje(tarea.getException())); });
-        fachada.fondo().execute(tarea);
-    }
-
-    @FXML
     private void alActualizar() {
         estado("Actualizando directorio y presencia…");
         Task<Void> tarea = new Task<>() {
@@ -413,8 +395,26 @@ public final class ChatController {
                          List<MensajeLocal> pagina, int total, int offset) { }
 
     private void actualizarFondo() {
+        actualizarFondo(false);
+    }
+
+    /**
+     * Los acuses (ENTREGADO/LEIDO) deben repintar el tick en vivo: el refresco
+     * normal se estrangula a 200 ms y un acuse que llegue en rafaga se perdia.
+     * El forzado salta el estrangulamiento y, si hay un refresco en curso,
+     * encadena otro al terminar para no pintar estado anterior al acuse.
+     */
+    private void actualizarFondoForzado() {
+        refrescoForzadoPendiente = true;
+        actualizarFondo(true);
+    }
+
+    private void actualizarFondo(boolean forzado) {
         long ahora = System.currentTimeMillis();
-        if (refrescoEnCurso || ahora - ultimoRefrescoMs < INTERVALO_MINIMO_MS) return;
+        if (refrescoEnCurso) {
+            return;
+        }
+        if (!forzado && ahora - ultimoRefrescoMs < INTERVALO_MINIMO_MS) return;
         refrescoEnCurso = true;
         ultimoRefrescoMs = ahora;
         String sel = seleccionado();
@@ -431,6 +431,11 @@ public final class ChatController {
         };
         tarea.setOnSucceeded(e -> {
             refrescoEnCurso = false;
+            if (refrescoForzadoPendiente) {
+                refrescoForzadoPendiente = false;
+                actualizarFondo(true);
+                return;
+            }
             Carga c = tarea.getValue();
             directorio.clear();
             for (UsuarioLocal u : c.usuarios()) directorio.put(u.codigo(), u);
@@ -449,6 +454,11 @@ public final class ChatController {
         });
         tarea.setOnFailed(e -> {
             refrescoEnCurso = false;
+            if (refrescoForzadoPendiente) {
+                refrescoForzadoPendiente = false;
+                actualizarFondo(true);
+                return;
+            }
             LOG.fine(() -> "refresco local omitido: " + mensaje(tarea.getException()));
         });
         fachada.fondo().execute(tarea);
@@ -658,7 +668,11 @@ public final class ChatController {
             }
             String afectado = mensaje.remitente() != null ? mensaje.remitente() : mensaje.destinatario();
             String sel = seleccionado();
-            actualizarFondo();
+            if (esAcuse(mensaje.tipo())) {
+                actualizarFondoForzado();
+            } else {
+                actualizarFondo();
+            }
             if (sel != null && sel.equals(afectado) && !esAcuse(mensaje.tipo())) marcarLeidosAsync(sel);
         });
     }

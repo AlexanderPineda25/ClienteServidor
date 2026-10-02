@@ -649,6 +649,13 @@ public final class FachadaCliente {
                 }
                 historial.eliminarPendiente(pendiente.id());
                 enviados++;
+            } catch (IllegalStateException rechazo) {
+                // Rechazo definitivo del servidor (destinatario inexistente, contenido
+                // vacio...): no reintentar eternamente ni bloquear los acuses detras.
+                historial.marcarEstado(pendiente.id(), EstadoMensaje.ERROR.name());
+                historial.eliminarPendiente(pendiente.id());
+                LOG.fine(() -> "[reintento] pendiente descartado por rechazo: "
+                        + pendiente.id() + " (" + rechazo.getMessage() + ")");
             } catch (IOException | RuntimeException e) {
                 historial.incrementarIntento(pendiente.id(), e.getMessage());
                 break;

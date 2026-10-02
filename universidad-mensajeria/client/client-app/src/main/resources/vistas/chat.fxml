@@ -74,8 +74,6 @@
             </HBox>
             <HBox alignment="CENTER_LEFT" spacing="8" styleClass="composer-footer">
                 <Label fx:id="etiquetaEstado" text="" styleClass="status-label" HBox.hgrow="ALWAYS"/>
-                <Button fx:id="botonDifundir" text="Difundir" onAction="#alDifundir"
-                        styleClass="quiet-button"/>
             </HBox>
         </VBox>
     </VBox>
