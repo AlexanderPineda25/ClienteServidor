@@ -887,11 +887,16 @@ class ChatWindow(QMainWindow):
                 nombre = " ".join(filter(None, [usuario.get("nombres"), usuario.get("apellidos")])).strip()
                 identidad = f"{nombre} [{remitente}]" if nombre else remitente
                 es_imagen = tipo == "MENSAJE_IMAGEN"
+                es_archivo = tipo == "MENSAJE_ARCHIVO"
+                if es_archivo:
+                    texto_burbuja = f"📎 {mensaje.get('nombreArchivo') or 'archivo'}"
+                else:
+                    texto_burbuja = "" if es_imagen else (mensaje.get("contenido") or "")
                 item = {
                     "id": id_mensaje, "sender": identidad, "date": mensaje.get("fechaHora", ""),
-                    "text": "" if es_imagen else (mensaje.get("contenido") or ""),
+                    "text": texto_burbuja,
                     "state": "", "raw_state": "", "is_own": False,
-                    "is_image": es_imagen,
+                    "is_image": es_imagen, "es_archivo": es_archivo,
                     "archivo_id": mensaje.get("archivoId"),
                     "filename": mensaje.get("nombreArchivo") or "",
                     "path": "", "image_loaded": False, "image_loading": False,

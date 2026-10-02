@@ -361,9 +361,11 @@ class FachadaCliente:
         Retorna ruta_destino escrita.
         """
         self._exigir_sesion()
+        if archivo_id is None or str(archivo_id).strip() == "":
+            raise RuntimeError("la descarga necesita el identificador del archivo")
         resp = self.conexion.pedir({
             "tipo": "DESCARGAR_ARCHIVO",
-            "archivoId": archivo_id,
+            "archivoId": str(archivo_id),
             "fechaHora": datetime.datetime.now().isoformat()
         })
         self._lanzar_si_error(resp, "descarga rechazada",

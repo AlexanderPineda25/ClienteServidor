@@ -18,15 +18,15 @@
     <VBox styleClass="login-card" spacing="10" maxWidth="380">
         <VBox styleClass="login-header" spacing="2">
             <Label text="UNIVERSIDAD" styleClass="login-eyebrow"/>
-            <Label text="MensajerÃ­a AcadÃ©mica" styleClass="login-title"/>
-            <Label text="Iniciar sesiÃ³n Â· Solo autenticaciÃ³n, sin Registrarse" styleClass="login-subtitle" wrapText="true"/>
+            <Label text="Mensajería Académica" styleClass="login-title"/>
+            <Label text="Iniciar sesión · Solo autenticación, sin Registrarse" styleClass="login-subtitle" wrapText="true"/>
         </VBox>
         <Label text="El alta de usuarios la hace el administrador en el servidor."
                styleClass="login-note" wrapText="true"/>
-        <Label text="CÃ³digo universitario" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+        <Label text="Código universitario" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
         <TextField fx:id="campoCodigo" promptText="A001234567" styleClass="login-field"/>
-        <Label text="ContraseÃ±a" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
-        <PasswordField fx:id="campoContrasena" promptText="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" styleClass="login-field" onAction="#alEntrar"/>
+        <Label text="Contraseña" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+        <PasswordField fx:id="campoContrasena" promptText="••••••••••" styleClass="login-field" onAction="#alEntrar"/>
         <GridPane hgap="8" vgap="6">
             <Label text="Servidor" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="login-server"/>
             <TextField fx:id="campoHost" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="login-field" prefWidth="200"/>
@@ -36,12 +36,12 @@
         <Label fx:id="etiquetaServidor" styleClass="login-server" wrapText="true"/>
         <CheckBox fx:id="checkRecordar" text="Recordar servidor" selected="true"/>
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <Button fx:id="botonEntrar" text="Iniciar sesiÃ³n â†’" onAction="#alEntrar" defaultButton="true" styleClass="login-button" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="botonEntrar" text="Iniciar sesión →" onAction="#alEntrar" defaultButton="true" styleClass="login-button" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
             <ProgressIndicator fx:id="spinner" prefWidth="26" prefHeight="26" visible="false" managed="false"/>
         </HBox>
         <Label fx:id="etiquetaError" styleClass="login-error" wrapText="true" visible="false" managed="false"/>
         <Label fx:id="etiquetaAviso" styleClass="login-warn" wrapText="true" visible="false" managed="false"/>
-        <!-- Fase 10.2 (P2): sin Â«Crear cuentaÂ»: los usuarios solo se crean en
+        <!-- Fase 10.2 (P2): sin «Crear cuenta»: los usuarios solo se crean en
              usuarios_iniciales.csv (registro por red deshabilitado en el servidor). -->
     </VBox>
 </VBox>
