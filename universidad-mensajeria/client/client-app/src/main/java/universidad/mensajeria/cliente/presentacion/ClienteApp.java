@@ -19,6 +19,7 @@ public final class ClienteApp extends Application {
 
     private static FachadaCliente fachada;
     private static Stage escenario;
+    private static volatile String avisoPendiente;
 
     /** Lo invoca ClienteMain antes de launch (DI manual). */
     public static void iniciar(FachadaCliente fachadaCliente) {
@@ -56,12 +57,23 @@ public final class ClienteApp extends Application {
     }
 
     public static void mostrarLogin() throws Exception {
-        escena("/vistas/login.fxml", "Mensajería Académica — Entrar", 380, 320);
+        escena("/vistas/login.fxml", "Mensajería Académica — Entrar", 440, 620);
         escenario.setOnCloseRequest(evento -> {
             if (!confirmar("¿Seguro que deseas salir de la aplicación?")) {
                 evento.consume();
             }
         });
+    }
+
+    /** Aviso ámbar del mockup (ej. CLOSE_NOTICE por inactividad RF-C08). */
+    public static void avisarProximoLogin(String motivo) {
+        avisoPendiente = motivo;
+    }
+
+    static String consumirAviso() {
+        String aviso = avisoPendiente;
+        avisoPendiente = null;
+        return aviso;
     }
 
     public static void mostrarChat() throws Exception {

@@ -60,17 +60,32 @@ class HistorialLocal:
             filas = conn.execute("""
                 SELECT id_mensaje FROM historial_local
                 WHERE origen = ? AND destino = ? AND estado <> 'LEIDO'
-                  AND tipo IN ('MENSAJE_TEXTO', 'MENSAJE_IMAGEN', 'SYNC_LOGIN')
+                  AND tipo IN ('MENSAJE_TEXTO', 'MENSAJE_IMAGEN', 'MENSAJE_ARCHIVO',
+                               'BROADCAST', 'SYNC_LOGIN')
                 ORDER BY fecha_envio ASC
             """, (otro, yo)).fetchall()
             return [fila[0] for fila in filas]
+
+    def contar_no_leidos_por_contacto(self, yo):
+        """Badge mockup §3: no leídos agrupados por remitente en una sola query."""
+        with self.db.conexion() as conn:
+            filas = conn.execute("""
+                SELECT origen AS codigo, COUNT(*) AS n
+                FROM historial_local
+                WHERE destino = ? AND estado <> 'LEIDO'
+                  AND tipo IN ('MENSAJE_TEXTO', 'MENSAJE_IMAGEN', 'MENSAJE_ARCHIVO',
+                               'BROADCAST', 'SYNC_LOGIN')
+                GROUP BY origen
+            """, (yo,)).fetchall()
+            return {fila[0]: fila[1] for fila in filas}
 
     def marcar_estado_de_conversacion(self, yo, otro, estado):
         with self.db.conexion() as conn:
             conn.execute("""
                 UPDATE historial_local SET estado = ?
                 WHERE origen = ? AND destino = ? AND tipo IN
-                  ('MENSAJE_TEXTO', 'MENSAJE_IMAGEN', 'SYNC_LOGIN')
+                  ('MENSAJE_TEXTO', 'MENSAJE_IMAGEN', 'MENSAJE_ARCHIVO',
+                   'BROADCAST', 'SYNC_LOGIN')
             """, (estado, otro, yo))
 
     def contar_conversacion(self, user1, user2):

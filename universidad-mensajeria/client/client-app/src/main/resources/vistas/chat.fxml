@@ -44,6 +44,8 @@
                     visible="false" managed="false" styleClass="quiet-button"/>
         </HBox>
         <ListView fx:id="listaMensajes" VBox.vgrow="ALWAYS" styleClass="message-list"/>
+        <Label fx:id="bannerOffline" text="⛔ Sin conexión — mensajes en cola local, se reintentan solos"
+               visible="false" managed="false" styleClass="offline-banner" maxWidth="Infinity"/>
         <VBox spacing="8" styleClass="composer-area">
             <HBox fx:id="barraRespuesta" spacing="8" alignment="CENTER_LEFT"
                   visible="false" managed="false" styleClass="reply-preview">

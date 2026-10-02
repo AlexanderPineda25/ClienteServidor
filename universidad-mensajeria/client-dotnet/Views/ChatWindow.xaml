@@ -17,11 +17,20 @@
                     <TextBlock x:Name="txtSesion" Foreground="#61717F" Margin="0,3,0,12"/>
                     <ui:TextBox x:Name="txtBuscar" PlaceholderText="Buscar nombre o código"
                                 TextChanged="TxtBuscar_TextChanged" Margin="0,0,0,8"/>
+                    <ComboBox x:Name="cmbFiltro" Margin="0,0,0,8" SelectionChanged="CmbFiltro_SelectionChanged">
+                        <ComboBoxItem Content="Todos" IsSelected="True"/>
+                        <ComboBoxItem Content="Conectados"/>
+                    </ComboBox>
                     <DockPanel>
                         <TextBlock Text="Contactos" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         <ui:Button DockPanel.Dock="Right" Content="Actualizar" Click="BtnActualizar_Click"/>
                     </DockPanel>
                 </StackPanel>
+                <Border x:Name="bannerOffline" Background="#FFFBEB" BorderBrush="#F2CE84" BorderThickness="1"
+                        CornerRadius="8" Padding="9" Margin="8,0,8,8" Visibility="Collapsed">
+                    <TextBlock Text="⛔ Sin conexión — mensajes en cola local, se reintentan solos"
+                               Foreground="#B45309" FontWeight="SemiBold" FontSize="11" TextWrapping="Wrap"/>
+                </Border>
                 <ListView x:Name="lstUsuarios" Margin="8,0,8,10" BorderThickness="0"
                           SelectionChanged="LstUsuarios_SelectionChanged">
                     <ListView.ItemTemplate>

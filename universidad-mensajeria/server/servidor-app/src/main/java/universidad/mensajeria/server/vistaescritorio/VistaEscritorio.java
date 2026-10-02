@@ -87,6 +87,14 @@ public class VistaEscritorio extends Application {
     private byte[] bytesImagenActual;
     private String nombreImagenActual = "";
 
+    // Pool (RF-S49): barras + etiquetas numericas, auto-refresco con Estado
+    private javafx.scene.control.ProgressBar barraRed;
+    private javafx.scene.control.ProgressBar barraFiltros;
+    private Label estadoPool;
+    private Label kpiEstado;
+    private Label kpiConexiones;
+    private Label kpiSistema;
+
     /** Lo invoca InicioServidor antes de lanzar (DI manual). */
     public static void lanzar(Fachada fachadaLista) {
         fachada = fachadaLista;
@@ -111,15 +119,21 @@ public class VistaEscritorio extends Application {
         tabMensajes = pestanaMensajes();
         tabs = new TabPane(
                 pestanaEstado(f),
-                pestanaUsuarios(f),
                 pestanaConectados(f),
-                pestanaEventos(f),
-                pestanaDifundir(),
+                pestanaUsuarios(f),
                 tabMensajes,
-                tabInformes);
+                tabInformes,
+                pestanaEventos(f),
+                pestanaPool(),
+                pestanaDifundir());
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         BorderPane raiz = new BorderPane(tabs);
+        Label titulo = new Label("Mensajería Universidad — Servidor");
+        titulo.getStyleClass().add("server-title");
+        HBox cabecera = new HBox(titulo);
+        cabecera.getStyleClass().add("server-header");
+        raiz.setTop(cabecera);
         HBox barra = new HBox(8,
                 boton("Iniciar", () -> ejecutarSeguro(f::iniciarServidor)),
                 boton("Detener", () -> ejecutarSeguro(f::detenerServidor)),
@@ -135,7 +149,16 @@ public class VistaEscritorio extends Application {
             }));
         }
 
-        escenario.setScene(new Scene(raiz, 960, 620));
+        Scene escena = new Scene(raiz, 1020, 660);
+        try {
+            var css = getClass().getResource("/estilos/escritorio.css");
+            if (css != null) {
+                escena.getStylesheets().add(css.toExternalForm());
+            }
+        } catch (Exception ignorada) {
+            // sin CSS la vista sigue funcional
+        }
+        escenario.setScene(escena);
         escenario.show();
         refrescar();
 
@@ -149,10 +172,38 @@ public class VistaEscritorio extends Application {
 
     private Tab pestanaEstado(Fachada f) {
         estado = new Label();
-        VBox caja = new VBox(8, estado);
+        kpiEstado = new Label();
+        kpiEstado.getStyleClass().add("kpi");
+        kpiConexiones = new Label();
+        kpiConexiones.getStyleClass().add("kpi");
+        kpiSistema = new Label();
+        kpiSistema.getStyleClass().add("kpi");
+        HBox kpis = new HBox(8, kpiEstado, kpiConexiones, kpiSistema);
+        Label ayuda = new Label("Auto-refresco cada 5 s (Observer RF-S39–S42). "
+                + "MySQL y uploads deben estar en ●; SERVIDOR es el buzón del sistema.");
+        ayuda.setWrapText(true);
+        VBox caja = new VBox(8, kpis, estado, ayuda);
         caja.setStyle("-fx-padding: 12;");
         Tab tab = new Tab("Estado", caja);
         return tab;
+    }
+
+    /** Pool red + filtros (RF-S49): numerico + barra, paridad con consola. */
+    private Tab pestanaPool() {
+        barraRed = new javafx.scene.control.ProgressBar(0);
+        barraRed.getStyleClass().add("pool-bar");
+        barraRed.setPrefWidth(420);
+        barraFiltros = new javafx.scene.control.ProgressBar(0);
+        barraFiltros.getStyleClass().add("pool-bar");
+        barraFiltros.setPrefWidth(420);
+        estadoPool = new Label("Sin datos: pulsa Refrescar.");
+        estadoPool.setWrapText(true);
+        VBox caja = new VBox(8,
+                new Label("Pool red (trabajadores ocupados / total):"), barraRed,
+                new Label("Filtros (tareas activas estimadas):"), barraFiltros,
+                estadoPool);
+        caja.setStyle("-fx-padding: 12;");
+        return new Tab("Pool", caja);
     }
 
     private Tab pestanaUsuarios(Fachada f) {
@@ -203,8 +254,9 @@ public class VistaEscritorio extends Application {
     private Tab pestanaEventos(Fachada f) {
         eventos = new TextArea();
         eventos.setEditable(false);
+        eventos.setPromptText("Eventos en vivo (Observer): conexiones, mensajes, cierres, logs.");
         VBox caja = new VBox(eventos);
-        return new Tab("Eventos", caja);
+        return new Tab("Logs", caja);
     }
 
     /** Difusion administrativa: solo a TODOS, sin selector de destinatario. */
@@ -590,14 +642,31 @@ public class VistaEscritorio extends Application {
             return;
         }
         var e = f.estadoServidor();
-        estado.setText((e.activo() ? "ACTIVO" : "DETENIDO")
+        String base = (e.activo() ? "ACTIVO" : "DETENIDO")
                 + "  ·  puerto " + e.puerto()
                 + "  ·  usuarios " + e.usuariosConectados()
                 + "  ·  sesiones " + e.sesionesActivas() + "/" + e.maxConexiones()
                 + "  ·  pool " + e.trabajadoresOcupados() + "/"
                 + e.trabajadoresTotal() + " (libres " + e.trabajadoresDisponibles() + ")"
                 + "  ·  procesados " + e.mensajesProcesados()
-                + "  ·  cola " + e.mensajesEnCola());
+                + "  ·  cola " + e.mensajesEnCola();
+        estado.setText(base);
+        if (kpiEstado != null) {
+            kpiEstado.setText((e.activo() ? "● EN LÍNEA :" : "○ DETENIDO :") + e.puerto());
+            kpiConexiones.setText(e.usuariosConectados() + "/" + e.maxConexiones()
+                    + " conect · " + e.sesionesActivas() + " sesiones · "
+                    + e.mensajesProcesados() + " msgs");
+            kpiSistema.setText("MySQL ● · uploads ● · auto-refresco ●");
+        }
+        if (barraRed != null && estadoPool != null) {
+            double total = Math.max(1, e.trabajadoresTotal());
+            barraRed.setProgress(e.trabajadoresOcupados() / total);
+            barraFiltros.setProgress(Math.min(1.0, e.mensajesEnCola() / 20.0));
+            estadoPool.setText("Pool red " + e.trabajadoresOcupados() + "/"
+                    + e.trabajadoresTotal() + " (libres " + e.trabajadoresDisponibles() + ")"
+                    + " · cola " + e.mensajesEnCola() + " · procesados "
+                    + e.mensajesProcesados() + " (RF-S49).");
+        }
         tabla.getItems().setAll(f.usuariosRegistrados());
         conectados.getItems().setAll(f.usuariosConectados());
     }

@@ -255,3 +255,26 @@
 }
 
 .status-label { -fx-padding: 2px 0; }
+
+.offline-banner {
+    -fx-background-color: #FFFBEB;
+    -fx-border-color: #F2CE84;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: #B45309;
+    -fx-font-weight: 700;
+    -fx-padding: 9px 12px;
+}
+
+.broadcast-pill {
+    -fx-background-color: #DCE8FF;
+    -fx-background-radius: 12px;
+    -fx-text-fill: #2456A6;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-padding: 3px 8px;
+}
+
+.sidebar-title {
+    -fx-text-fill: #1F3A5F;
+}

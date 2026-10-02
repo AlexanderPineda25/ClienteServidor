@@ -75,6 +75,7 @@ public final class ChatController {
     @FXML private Button botonMas;
     @FXML private Button botonEnviar;
     @FXML private Button botonDifundir;
+    @FXML private Label bannerOffline;
 
     private FachadaCliente fachada;
     private Preferences prefs;
@@ -144,6 +145,7 @@ public final class ChatController {
         fachada.desuscribir(alEntrar);
         fachada.suscribir(alEntrar);
         configurarDragDrop();
+        actualizarBannerOffline();
         alActualizar();
         respaldo = new Timeline(new KeyFrame(Duration.seconds(RESPALDO_SEGUNDOS), e -> actualizarFondo()));
         respaldo.setCycleCount(Timeline.INDEFINITE);
@@ -642,9 +644,14 @@ public final class ChatController {
             if (mensaje.tipo() == TipoMensaje.CLOSE_NOTICE) {
                 if (cierreRemotoProcesado) return;
                 cierreRemotoProcesado = true;
-                estado("Sesión cerrada: " + mensaje.mensajeError());
+                String motivo = mensaje.mensajeError() == null || mensaje.mensajeError().isBlank()
+                        ? "Sesión cerrada por el servidor."
+                        : mensaje.mensajeError();
+                estado("Sesión cerrada: " + motivo);
                 detener();
                 fachada.cerrarSesionRemota();
+                ClienteApp.avisarProximoLogin("Sesión cerrada por inactividad (10 min), inicie de nuevo. "
+                        + motivo + " (CLOSE_NOTICE RF-C08).");
                 try { ClienteApp.mostrarLogin(); }
                 catch (Exception e) { estado("No se pudo volver al inicio: " + mensaje(e)); }
                 return;
@@ -694,7 +701,19 @@ public final class ChatController {
         fachada.fondo().execute(tarea);
     }
 
-    private void estado(String texto) { etiquetaEstado.setText(texto); }
+    private void estado(String texto) {
+        etiquetaEstado.setText(texto);
+        actualizarBannerOffline();
+    }
+
+    private void actualizarBannerOffline() {
+        if (bannerOffline == null || fachada == null) {
+            return;
+        }
+        boolean sinRed = !fachada.conectado();
+        bannerOffline.setVisible(sinRed);
+        bannerOffline.setManaged(sinRed);
+    }
 
     private static String mensaje(Throwable e) {
         return e == null ? "error desconocido" : e.getMessage() != null ? e.getMessage() : e.toString();

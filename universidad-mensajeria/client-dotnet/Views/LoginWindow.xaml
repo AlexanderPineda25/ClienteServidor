@@ -2,21 +2,59 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        Title="Mensajería Académica | Iniciar sesión" MinHeight="390" MinWidth="390"
-        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen">
-    <StackPanel Margin="32" VerticalAlignment="Center" MinWidth="320">
-        <TextBlock Text="UNIVERSIDAD" Foreground="#147D73" FontSize="11" FontWeight="Bold" Margin="0,0,0,8"/>
-        <TextBlock Text="Mensajería Académica" FontSize="23" FontWeight="Bold" Margin="0,0,0,6"/>
-        <TextBlock Text="Ingresa con tus credenciales institucionales." Foreground="#61717F" TextWrapping="Wrap" Margin="0,0,0,24"/>
-        <TextBlock Text="Código" Margin="0,0,0,5"/>
-        <ui:TextBox x:Name="txtCodigo" PlaceholderText="Código institucional" ClearButtonEnabled="True" Margin="0,0,0,14"/>
-        
-        <TextBlock Text="Contraseña" Margin="0,0,0,5"/>
-        <ui:PasswordBox x:Name="txtContrasena" PlaceholderText="Contraseña" Margin="0,0,0,20"/>
-        
-        <ui:Button Content="Entrar" Appearance="Primary" Click="BtnEntrar_Click" MinHeight="38"/>
-        <!-- Fase 10.2 (P2): sin «Crear cuenta»: el alta es solo por archivo plano (CSV). -->
+        Title="Mensajería Académica | Iniciar sesión" MinHeight="560" MinWidth="440"
+        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen"
+        Background="#EEF1F6">
+    <Border Margin="24" Background="White" CornerRadius="12" Padding="0"
+            BorderBrush="#D7DEE8" BorderThickness="1">
+        <StackPanel>
+            <Border Background="#1F3A5F" CornerRadius="12,12,0,0" Padding="18,14">
+                <StackPanel>
+                    <TextBlock Text="UNIVERSIDAD" Foreground="#9FB6D8" FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Text="Mensajería Académica" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                    <TextBlock Text="Iniciar sesión · Solo autenticación, sin Registrarse"
+                               Foreground="#C9D6E8" FontSize="12" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <StackPanel Margin="28,18,28,24">
+                <TextBlock Text="El alta de usuarios es solo en usuarios_iniciales.csv del servidor (RF-C06)."
+                           Foreground="#64748B" FontStyle="Italic" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <TextBlock Text="Código universitario" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <ui:TextBox x:Name="txtCodigo" PlaceholderText="A001234567" ClearButtonEnabled="True" Margin="0,0,0,12"/>
 
-        <TextBlock x:Name="txtError" Foreground="Red" Margin="0,10,0,0" TextWrapping="Wrap"/>
-    </StackPanel>
+                <TextBlock Text="Contraseña" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <ui:PasswordBox x:Name="txtContrasena" PlaceholderText="••••••••••" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Servidor" Foreground="#475569" Margin="0,0,0,5"/>
+                        <ui:TextBox x:Name="txtHost" PlaceholderText="192.168.1.10" IsEnabled="False"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Puerto" Foreground="#475569" Margin="0,0,0,5"/>
+                        <ui:TextBox x:Name="txtPuerto" PlaceholderText="5000" IsEnabled="False"/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="txtServidor" Foreground="#475569" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <CheckBox x:Name="chkRecordar" Content="Recordar servidor" IsChecked="True" Margin="0,0,0,12"/>
+
+                <ui:Button x:Name="btnEntrar" Content="Iniciar sesión →" Appearance="Primary"
+                           Click="BtnEntrar_Click" MinHeight="40"/>
+                <!-- Fase 10.2 (P2): sin «Crear cuenta»: el alta es solo por archivo plano (CSV). -->
+
+                <Border x:Name="bordeError" Background="#FDECEA" BorderBrush="#F1A9A5" BorderThickness="1"
+                        CornerRadius="8" Padding="9" Margin="0,12,0,0" Visibility="Collapsed">
+                    <TextBlock x:Name="txtError" Foreground="#B91C1C" TextWrapping="Wrap"/>
+                </Border>
+                <Border x:Name="bordeAviso" Background="#FFFBEB" BorderBrush="#F2CE84" BorderThickness="1"
+                        CornerRadius="8" Padding="9" Margin="0,8,0,0" Visibility="Collapsed">
+                    <TextBlock x:Name="txtAviso" Foreground="#B45309" TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </Border>
 </Window>

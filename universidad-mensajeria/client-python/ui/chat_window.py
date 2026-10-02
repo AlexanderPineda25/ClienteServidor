@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QListWidgetItem, QMainWindow,
     QMessageBox, QInputDialog, QSplitter, QVBoxLayout, QWidget,
 )
-from qfluentwidgets import LineEdit, ListWidget, PrimaryPushButton, PushButton
+from qfluentwidgets import ComboBox, LineEdit, ListWidget, PrimaryPushButton, PushButton
 
 
 class _UiEvents(QObject):
@@ -206,6 +206,10 @@ class ChatWindow(QMainWindow):
         self.entry_buscar = LineEdit()
         self.entry_buscar.setPlaceholderText("Buscar nombre o código")
         self.entry_buscar.textChanged.connect(self._filtrar_usuarios)
+        self.combo_filtro = ComboBox()
+        self.combo_filtro.addItems(["Todos", "Conectados"])
+        self.combo_filtro.setCurrentIndex(0)
+        self.combo_filtro.currentIndexChanged.connect(lambda _i: self._filtrar_usuarios())
         fila_contactos = QHBoxLayout()
         titulo = QLabel("Contactos")
         titulo.setStyleSheet("font-weight: 700; color: #263D43;")
@@ -218,10 +222,20 @@ class ChatWindow(QMainWindow):
         self.lbl_estado_red = QLabel("Conectando...")
         self.lbl_estado_red.setStyleSheet("color: #61717F; font-size: 11px;")
         self.lbl_estado_red.setWordWrap(True)
+        self.lbl_offline = QLabel("⛔ Sin conexión — mensajes en cola local, se reintentan solos")
+        self.lbl_offline.setStyleSheet(
+            "color: #B45309; background: #FFFBEB; border: 1px solid #F2CE84;"
+            " border-radius: 8px; padding: 8px; font-size: 11px; font-weight: 700;"
+        )
+        self.lbl_offline.setWordWrap(True)
+        self.lbl_offline.setVisible(False)
+        self._no_leidos = {}
         left.addWidget(self.lbl_sesion)
         left.addWidget(self.entry_buscar)
+        left.addWidget(self.combo_filtro)
         left.addLayout(fila_contactos)
         left.addWidget(self.lista_usuarios, 1)
+        left.addWidget(self.lbl_offline)
         left.addWidget(self.lbl_estado_red)
         splitter.addWidget(panel_usuarios)
 
@@ -340,12 +354,25 @@ class ChatWindow(QMainWindow):
         def cargar():
             try:
                 if hasattr(self.fachada, "listar_usuarios"):
-                    return (self.fachada.listar_usuarios(), None)
-                codigos = self.fachada.listar_conectados()
-                local = {u["codigo"]: u for u in self.fachada.directorio_local()}
-                return ([dict(local.get(c, {"codigo": c}), conectado=1) for c in codigos], None)
+                    usuarios = self.fachada.listar_usuarios()
+                else:
+                    codigos = self.fachada.listar_conectados()
+                    local = {u["codigo"]: u for u in self.fachada.directorio_local()}
+                    usuarios = [dict(local.get(c, {"codigo": c}), conectado=1) for c in codigos]
+                try:
+                    historial = getattr(self.fachada, "historial", None)
+                    if historial is not None and hasattr(historial, "contar_no_leidos_por_contacto"):
+                        no_leidos = historial.contar_no_leidos_por_contacto(self.codigo)
+                    else:
+                        no_leidos = {}
+                except Exception:
+                    no_leidos = {}
+                return (usuarios, no_leidos, None)
             except Exception as error:
-                return (self.fachada.directorio_local(), error)
+                try:
+                    return (self.fachada.directorio_local(), {}, error)
+                except Exception:
+                    return ([], {}, error)
         self._ejecutar("directorio", lambda: (seleccionado, *cargar()))
 
     def _procesar_tarea(self, tipo, resultado, error):
@@ -375,13 +402,19 @@ class ChatWindow(QMainWindow):
             return
 
         if tipo == "directorio":
-            seleccionado, usuarios, error_red = resultado
+            seleccionado, usuarios, no_leidos, error_red = resultado
             self._directorio = [u for u in usuarios if u.get("codigo") != self.codigo]
+            self._no_leidos = dict(no_leidos or {})
             self._filtrar_usuarios(seleccionado=seleccionado)
             online = sum(bool(u.get("conectado")) for u in self._directorio)
-            self.lbl_estado_red.setText(
-                f"{online} contactos en línea" if error_red is None
-                else "Sin conexión: directorio local")
+            sin_red = error_red is not None
+            self.lbl_offline.setVisible(sin_red)
+            if sin_red:
+                self.lbl_estado_red.setText("Sin conexión: directorio local · cola activa (RF-C16)")
+                self.lbl_estado_red.setStyleSheet("color: #B45309; font-size: 11px; font-weight: 700;")
+            else:
+                self.lbl_estado_red.setText(f"{online} contactos en línea")
+                self.lbl_estado_red.setStyleSheet("color: #61717F; font-size: 11px;")
         elif tipo == "historial":
             usuario, filas, offset, total = resultado
             if usuario == self.usuario_seleccionado:
@@ -455,6 +488,11 @@ class ChatWindow(QMainWindow):
         if seleccionado is None:
             seleccionado = self.usuario_seleccionado
         filtro = (self.entry_buscar.text() or "").strip().casefold()
+        solo_conectados = False
+        try:
+            solo_conectados = self.combo_filtro.currentText() == "Conectados"
+        except Exception:
+            pass
         usuarios = sorted(self._directorio,
                           key=lambda u: (not bool(u.get("conectado")),
                                          (u.get("apellidos") or "").casefold(), u.get("codigo", "")))
@@ -462,13 +500,22 @@ class ChatWindow(QMainWindow):
         seleccionado_item = None
         for usuario in usuarios:
             codigo = usuario.get("codigo", "")
+            if solo_conectados and not bool(usuario.get("conectado")):
+                continue
             nombre = " ".join(filter(None, [usuario.get("nombres"), usuario.get("apellidos")])).strip()
             identidad = f"{nombre} [{codigo}]" if nombre else codigo
             busqueda = f"{identidad} {codigo}".casefold()
             if filtro and filtro not in busqueda:
                 continue
             online = bool(usuario.get("conectado"))
-            item = QListWidgetItem(f"●  {identidad}\n     {'en línea' if online else 'desconectado'}")
+            pendientes = 0
+            try:
+                pendientes = int((self._no_leidos or {}).get(codigo, 0))
+            except Exception:
+                pendientes = 0
+            insignia = f"  ({pendientes})" if pendientes > 0 else ""
+            punto = "●" if online else "○"
+            item = QListWidgetItem(f"{punto}  {identidad}{insignia}\n     {'en línea' if online else 'desconectado'}")
             item.setData(Qt.ItemDataRole.UserRole, codigo)
             item.setData(Qt.ItemDataRole.UserRole + 1, identidad)
             item.setForeground(Qt.GlobalColor.darkGreen if online else Qt.GlobalColor.gray)
@@ -485,6 +532,12 @@ class ChatWindow(QMainWindow):
         if not codigo:
             return
         self.usuario_seleccionado = codigo
+        try:
+            if isinstance(getattr(self, "_no_leidos", None), dict) and codigo in self._no_leidos:
+                self._no_leidos.pop(codigo, None)
+                self._filtrar_usuarios(seleccionado=codigo)
+        except Exception:
+            pass
         self.lbl_conversacion.setText(actual.data(Qt.ItemDataRole.UserRole + 1) or codigo)
         self.lbl_presencia.setText("en línea" if any(
             u.get("codigo") == codigo and u.get("conectado") for u in self._directorio)

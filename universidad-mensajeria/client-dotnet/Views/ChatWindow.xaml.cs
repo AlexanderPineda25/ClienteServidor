@@ -160,9 +160,12 @@ namespace Mensajeria.Views
         private void AplicarFiltro(string? seleccionado = null)
         {
             string filtro = (txtBuscar.Text ?? "").Trim();
+            bool soloConectados = (cmbFiltro.SelectedItem as System.Windows.Controls.ComboBoxItem)
+                ?.Content?.ToString() == "Conectados";
             var vista = _directorio.Where(u =>
-                filtro.Length == 0 || u.Etiqueta.Contains(filtro, StringComparison.CurrentCultureIgnoreCase)
-                || u.Codigo.Contains(filtro, StringComparison.CurrentCultureIgnoreCase))
+                (!soloConectados || u.Conectado)
+                && (filtro.Length == 0 || u.Etiqueta.Contains(filtro, StringComparison.CurrentCultureIgnoreCase)
+                || u.Codigo.Contains(filtro, StringComparison.CurrentCultureIgnoreCase)))
                 .OrderByDescending(u => u.Conectado).ThenBy(u => u.Apellidos).ToList();
             _usuarios.Clear();
             foreach (var usuario in vista) _usuarios.Add(usuario);
@@ -172,6 +175,9 @@ namespace Mensajeria.Views
         }
 
         private void TxtBuscar_TextChanged(object sender, TextChangedEventArgs e) => AplicarFiltro(_usuarioDestino);
+
+        private void CmbFiltro_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+            => AplicarFiltro(_usuarioDestino);
 
         private void Fachada_OnPresencia(Dictionary<string, JsonElement> aviso) =>
             Dispatcher.BeginInvoke(CargarUsuarios);
