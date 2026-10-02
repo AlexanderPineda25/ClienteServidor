@@ -79,7 +79,7 @@ namespace Mensajeria.Views
             }
             catch (System.Exception ex)
             {
-                txtError.Text = "✖ No se pudo conectar: " + ex.Message;
+                txtError.Text = "✖ No se pudo conectar (" + ex.GetType().Name + "): " + ex.Message;
                 bordeError.Visibility = Visibility.Visible;
             }
             finally

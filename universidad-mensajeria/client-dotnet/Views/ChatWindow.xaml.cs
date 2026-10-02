@@ -159,6 +159,7 @@ namespace Mensajeria.Views
 
         private void AplicarFiltro(string? seleccionado = null)
         {
+            if (txtBuscar == null || txtEstado == null || lstUsuarios == null) return;
             string filtro = (txtBuscar.Text ?? "").Trim();
             bool soloConectados = (cmbFiltro.SelectedItem as System.Windows.Controls.ComboBoxItem)
                 ?.Content?.ToString() == "Conectados";
@@ -177,7 +178,12 @@ namespace Mensajeria.Views
         private void TxtBuscar_TextChanged(object sender, TextChangedEventArgs e) => AplicarFiltro(_usuarioDestino);
 
         private void CmbFiltro_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-            => AplicarFiltro(_usuarioDestino);
+        {
+            // El evento se dispara durante InitializeComponent (IsSelected en XAML)
+            // cuando txtEstado/lstUsuarios aun no existen: ignorar ese disparo inicial.
+            if (txtEstado == null || lstUsuarios == null || txtBuscar == null) return;
+            AplicarFiltro(_usuarioDestino);
+        }
 
         private void Fachada_OnPresencia(Dictionary<string, JsonElement> aviso) =>
             Dispatcher.BeginInvoke(CargarUsuarios);
