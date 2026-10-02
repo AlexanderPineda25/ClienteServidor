@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Solo tests: net10.0 es el runtime instalado; la app sigue en net8.0-windows (§7.3). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Mensajeria.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!-- Se compilan las fuentes no-UI del cliente (sin Views/App.xaml) -->
+  <ItemGroup>
+    <Compile Include="..\client-dotnet\Componentes\*.cs" />
+    <Compile Include="..\client-dotnet\Transversal\*.cs" />
+    <Compile Include="..\client-dotnet\Store\*.cs" />
+    <Compile Include="..\client-dotnet\Fachada\FachadaCliente.cs" />
+    <Compile Include="..\client-dotnet\Fachada\IFachadaCliente.cs" />
+  </ItemGroup>
+
+</Project>

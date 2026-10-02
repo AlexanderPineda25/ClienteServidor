@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>universidad.mensajeria</groupId>
+        <artifactId>mensajeria-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>server</artifactId>
+    <packaging>pom</packaging>
+    <name>Server (agregador multi-modulo, PLAN2 §2.4)</name>
+    <description>Servidor de mensajeria academica: utilerias + 5 int-* + 5 comp-* + servidor-app</description>
+
+    <modules>
+        <module>utilerias</module>
+        <module>int-protocolo-comunicacion</module>
+        <module>int-cliente-servidor</module>
+        <module>int-servicios-disponibles</module>
+        <module>int-usuarios-disponibles</module>
+        <module>int-gestor-mensajes</module>
+        <module>comp-protocolo-comunicacion</module>
+        <module>comp-protocolo-clienteservidor</module>
+        <module>comp-servicios</module>
+        <module>comp-usuarios</module>
+        <module>comp-gestor-colas</module>
+        <module>servidor-app</module>
+    </modules>
+</project>

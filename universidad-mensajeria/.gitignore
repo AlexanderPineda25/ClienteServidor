@@ -1,0 +1,11 @@
+# Artefactos de runtime (Fases 3-5): nunca se versionan.
+uploads/
+work/
+logs/
+target/
+bin/
+obj/
+__pycache__/
+.venv/
+*.db
+*.log

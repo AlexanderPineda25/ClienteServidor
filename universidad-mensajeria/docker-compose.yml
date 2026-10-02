@@ -1,0 +1,72 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mensajeria_mysql
+    environment:
+      MYSQL_DATABASE: mensajeria_db
+      MYSQL_ROOT_PASSWORD: 12345
+      TZ: America/Bogota
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p12345"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres:
+    image: postgres:16
+    container_name: mensajeria_postgres
+    environment:
+      POSTGRES_DB: mensajeria_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mensajeria_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Servidor de mensajeria (Fase 11.4): JAR + JRE 21. Requiere mysql sano.
+  # Credenciales de desarrollo; en produccion usa secretos y otro compose.
+  servidor:
+    build: .
+    container_name: mensajeria_servidor
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server/uploads:/app/uploads
+      - ./server/logs:/app/logs
+    command:
+      - --db.active=mysql
+      - --db.mysql.url=jdbc:mysql://mysql:3306/mensajeria_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Bogota
+      - --db.mysql.user=root
+      - --db.mysql.pass=12345
+      - --red.puerto=5000
+
+  # Motor opcional del ADAPTER §5.4 (verificacion adicional, criterio §13.11)
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    container_name: mensajeria_oracle
+    environment:
+      ORACLE_PASSWORD: 12345
+      APP_USER: MENSAJERIA_DB
+      APP_USER_PASSWORD: 12345
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracledata:/opt/oracle/oradata
+
+volumes:
+  mysqldata:
+  pgdata:
+  oracledata:

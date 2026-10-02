@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.VBox?>
+
+<SplitPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+           fx:controller="universidad.mensajeria.cliente.presentacion.ChatController"
+           dividerPositions="0.30" stylesheets="@../estilos/chat.css" styleClass="messenger-root">
+    <VBox styleClass="sidebar">
+        <padding><Insets top="16" right="12" bottom="12" left="12"/></padding>
+        <HBox alignment="CENTER_LEFT" spacing="8" styleClass="sidebar-heading">
+            <Label text="Chats" styleClass="sidebar-title" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="botonRefrescar" text="↻" onAction="#alActualizar"
+                    styleClass="icon-button" accessibleText="Actualizar usuarios"/>
+        </HBox>
+        <Label fx:id="etiquetaSesion" styleClass="session-label"/>
+        <TextField fx:id="campoBuscar" promptText="Buscar por nombre o código…"
+                   styleClass="search-field"/>
+        <ComboBox fx:id="comboFiltro" maxWidth="Infinity" styleClass="filter-select"/>
+        <ListView fx:id="listaUsuarios" VBox.vgrow="ALWAYS" styleClass="chat-list"/>
+        <HBox spacing="8" styleClass="sidebar-actions">
+            <Button text="KICK otras" onAction="#alKick" styleClass="quiet-button"/>
+            <Button text="Salir" onAction="#alSalir" styleClass="quiet-button" HBox.hgrow="ALWAYS"/>
+            <Button text="Salir en todos" onAction="#alSalirTodos" styleClass="quiet-button"/>
+        </HBox>
+    </VBox>
+    <VBox styleClass="conversation-pane">
+        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="conversation-header">
+            <VBox spacing="3" HBox.hgrow="ALWAYS">
+                <Label fx:id="etiquetaChat" text="Selecciona una conversación" styleClass="conversation-title"/>
+                <Label fx:id="etiquetaPresencia" text="" styleClass="conversation-presence"/>
+            </VBox>
+            <Button fx:id="botonMas" text="↑ Cargar anteriores" onAction="#alCargarMas"
+                    visible="false" managed="false" styleClass="quiet-button"/>
+        </HBox>
+        <ListView fx:id="listaMensajes" VBox.vgrow="ALWAYS" styleClass="message-list"/>
+        <VBox spacing="8" styleClass="composer-area">
+            <HBox fx:id="barraRespuesta" spacing="8" alignment="CENTER_LEFT"
+                  visible="false" managed="false" styleClass="reply-preview">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Respondiendo a" styleClass="reply-heading"/>
+                    <Label fx:id="etiquetaRespuesta" styleClass="reply-text" maxWidth="Infinity"/>
+                </VBox>
+                <Button text="×" onAction="#alCancelarRespuesta" styleClass="icon-button"
+                        accessibleText="Cancelar respuesta"/>
+            </HBox>
+            <HBox fx:id="barraAdjunto" spacing="8" alignment="CENTER_LEFT"
+                  visible="false" managed="false" styleClass="attachment-preview">
+                <ImageView fx:id="vistaPrevia" fitWidth="64" fitHeight="52" preserveRatio="true"/>
+                <Label fx:id="etiquetaAdjunto" styleClass="attachment-name" HBox.hgrow="ALWAYS"/>
+                <Button text="×" onAction="#alQuitarImagen" styleClass="icon-button"
+                        accessibleText="Quitar imagen adjunta"/>
+            </HBox>
+            <HBox spacing="8" alignment="BOTTOM_CENTER" styleClass="composer-row">
+                <Button fx:id="botonAdjuntar" text="＋" onAction="#alElegirImagen"
+                        styleClass="icon-button" accessibleText="Adjuntar imagen"/>
+                <TextArea fx:id="campoEntrada" promptText="Escribe un mensaje…"
+                          wrapText="true" prefRowCount="2" onKeyPressed="#alTeclaEntrada"
+                          styleClass="message-input" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="botonEnviar" text="Enviar" onAction="#alEnviar"
+                        defaultButton="true" styleClass="send-button"/>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="8" styleClass="composer-footer">
+                <Label fx:id="etiquetaEstado" text="" styleClass="status-label" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="botonDifundir" text="Difundir" onAction="#alDifundir"
+                        styleClass="quiet-button"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</SplitPane>

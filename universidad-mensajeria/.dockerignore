@@ -1,0 +1,15 @@
+target/
+bin/
+obj/
+.venv/
+__pycache__/
+*.pyc
+logs/
+uploads/
+work/
+.git/
+.vs/
+.idea/
+*.db
+*.log
+client-python/imagenes/
