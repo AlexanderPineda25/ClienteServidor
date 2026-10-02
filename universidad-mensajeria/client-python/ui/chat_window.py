@@ -1,6 +1,5 @@
 import base64
 import datetime
-import os
 import uuid
 from pathlib import Path
 
@@ -8,7 +7,7 @@ from PySide6.QtCore import QObject, QRunnable, QSize, Qt, QThreadPool, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QListWidgetItem, QMainWindow,
-    QMessageBox, QInputDialog, QSplitter, QVBoxLayout, QWidget,
+    QMessageBox, QSplitter, QVBoxLayout, QWidget,
 )
 from qfluentwidgets import ComboBox, LineEdit, ListWidget, PrimaryPushButton, PushButton
 
@@ -256,10 +255,7 @@ class ChatWindow(QMainWindow):
         title_box.setSpacing(2)
         title_box.addWidget(self.lbl_conversacion)
         title_box.addWidget(self.lbl_presencia)
-        self.btn_difundir = PushButton("Difundir")
-        self.btn_difundir.clicked.connect(self.difundir)
         header_row.addLayout(title_box, 1)
-        header_row.addWidget(self.btn_difundir)
 
         self.lista_mensajes = ListWidget()
         self.lista_mensajes.setSpacing(3)
@@ -849,11 +845,6 @@ class ChatWindow(QMainWindow):
                     event.acceptProposedAction()
                     return
         event.ignore()
-
-    def difundir(self):
-        texto, aceptado = QInputDialog.getText(self, "Difundir", "Mensaje para todos:")
-        if aceptado and texto.strip():
-            self._ejecutar("difusion", lambda: self.fachada.difundir(texto.strip()))
 
     def salir_en_todos(self):
         respuesta = QMessageBox.question(

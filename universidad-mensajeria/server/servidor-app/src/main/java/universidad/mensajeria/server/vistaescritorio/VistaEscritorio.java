@@ -263,7 +263,8 @@ public class VistaEscritorio extends Application {
     private Tab pestanaDifundir() {
         campoDifundir = new TextField();
         campoDifundir.setPromptText("Mensaje para toda la comunidad (broadcast, sin destinatario unico)");
-        estadoDifundir = new Label("La difusion llega a todos los conectados.");
+        estadoDifundir = new Label("La difusion llega a todos los usuarios registrados.");
+        estadoDifundir.setWrapText(true);
         Button difundir = boton("Difundir a todos", () -> ejecutarSeguro(() -> {
             Fachada f = fachada;
             if (f == null) {
@@ -346,7 +347,8 @@ public class VistaEscritorio extends Application {
         estadoFiltroVisual = new Label("Filtros de previsualizacion (no reescriben uploads).");
         estadoFiltroVisual.setWrapText(true);
         Button aplicarFiltro = boton("Previsualizar filtro", () -> ejecutarSeguro(this::aplicarFiltroVisual));
-        HBox filaFiltro = new HBox(8, new Label("Filtro:"), comboFiltroVisual, aplicarFiltro);
+        Button descargar = boton("Descargar archivo", () -> ejecutarSeguro(this::descargarSeleccionado));
+        HBox filaFiltro = new HBox(8, new Label("Filtro:"), comboFiltroVisual, aplicarFiltro, descargar);
         VBox cajaFiltros = new VBox(6, vistaMensaje, filaFiltro, estadoFiltroVisual);
 
         HBox detalle = new HBox(12, new VBox(6, detalleTitulo, detalleContenido, detalleMeta), cajaFiltros);
@@ -382,21 +384,32 @@ public class VistaEscritorio extends Application {
         List<MensajeResumenDTO> filtrados = todos.stream()
                 .filter(m -> "Todos".equals(tipo) || (m.tipo() != null && m.tipo().equalsIgnoreCase(tipo)))
                 .toList();
+        // Conservar la seleccion: el auto-refresh no borra el detalle en curso.
+        MensajeResumenDTO sel = tablaMensajes.getSelectionModel().getSelectedItem();
+        long idSel = sel == null ? -1L : sel.id();
         tablaMensajes.getItems().setAll(filtrados);
         estadoMensajes.setText(filtrados.size() + " mensaje(s)"
                 + (codigo.isEmpty() ? "" : " con " + codigo)
                 + (todos.size() != filtrados.size() ? " (de " + todos.size() + " totales)" : ""));
-        bytesImagenActual = null;
-        vistaMensaje.setImage(null);
+        if (idSel >= 0) {
+            for (MensajeResumenDTO m : filtrados) {
+                if (m.id() == idSel) {
+                    tablaMensajes.getSelectionModel().select(m);
+                    break;
+                }
+            }
+        }
     }
 
     private void mostrarDetalle(MensajeResumenDTO m) {
         bytesImagenActual = null;
+        nombreImagenActual = "";
         vistaMensaje.setImage(null);
         if (m == null) {
             detalleTitulo.setText("Detalle: selecciona un mensaje");
             detalleContenido.clear();
             detalleMeta.setText(" ");
+            estadoFiltroVisual.setText("Filtros de previsualizacion (no reescriben uploads).");
             return;
         }
         detalleTitulo.setText("Detalle #" + m.id() + " " + txt(m.tipo())
@@ -447,14 +460,72 @@ public class VistaEscritorio extends Application {
             nombreImagenActual = m.nombreArchivo() == null ? "archivo" : m.nombreArchivo();
             if (esImagen(bytes, m.mime(), nombreImagenActual)) {
                 bytesImagenActual = bytes.clone();
+                // La vista la decodifica JavaFX (tolera formatos que ImageIO no);
+                // los filtros usan ImageIO aparte y avisan si no pueden.
                 vistaMensaje.setImage(new Image(new ByteArrayInputStream(bytesImagenActual)));
-                estadoFiltroVisual.setText("Imagen cargada: elige un filtro y pulsa Previsualizar.");
+                if (vistaMensaje.getImage().isError()) {
+                    estadoFiltroVisual.setText("Vista previa no disponible para este formato.");
+                } else if (decodificableParaFiltros(bytesImagenActual)) {
+                    estadoFiltroVisual.setText("Imagen cargada: elige un filtro y pulsa Previsualizar.");
+                } else {
+                    estadoFiltroVisual.setText("Vista cargada, pero este formato no admite"
+                            + " previsualizar filtros (solo descarga).");
+                }
             } else {
                 estadoFiltroVisual.setText("Archivo no imagen (" + bytes.length
-                        + " bytes): solo metadatos, sin preview.");
+                        + " bytes): metadatos arriba, descarga abajo.");
             }
         } catch (RuntimeException e) {
             estadoFiltroVisual.setText("No se pudo cargar el archivo: " + e.getMessage());
+        }
+    }
+
+    /** Descarga el seleccionado: bytes del archivo o .txt con el contenido. */
+    private void descargarSeleccionado() {
+        MensajeResumenDTO m = tablaMensajes.getSelectionModel().getSelectedItem();
+        if (m == null) {
+            estadoFiltroVisual.setText("Selecciona primero un mensaje para descargar.");
+            return;
+        }
+        String tipo = m.tipo() == null ? "" : m.tipo().toUpperCase();
+        try {
+            if ("TEXTO".equals(tipo) || "BROADCAST".equals(tipo)) {
+                guardarBytes(("mensaje-" + m.id() + ".txt").replaceAll("[^A-Za-z0-9._-]", "_"),
+                        (m.contenido() == null ? "" : m.contenido())
+                                .getBytes(StandardCharsets.UTF_8));
+                return;
+            }
+            if (m.archivoId() == null) {
+                estadoFiltroVisual.setText("Este mensaje no tiene archivo asociado.");
+                return;
+            }
+            Fachada f = fachada;
+            if (f == null) {
+                return;
+            }
+            byte[] bytes = f.bytesArchivoParaVista(m.archivoId());
+            String nombre = (m.nombreArchivo() == null || m.nombreArchivo().isBlank())
+                    ? ("archivo-" + m.id()) : m.nombreArchivo();
+            guardarBytes(nombre, bytes);
+        } catch (RuntimeException e) {
+            estadoFiltroVisual.setText("No se pudo descargar: " + e.getMessage());
+        }
+    }
+
+    private void guardarBytes(String sugerido, byte[] bytes) {
+        FileChooser elegidor = new FileChooser();
+        elegidor.setTitle("Guardar archivo del mensaje");
+        elegidor.setInitialFileName(sugerido);
+        File destino = elegidor.showSaveDialog(escenario);
+        if (destino == null) {
+            return;
+        }
+        try {
+            Files.write(destino.toPath(), bytes);
+            estadoFiltroVisual.setText("Guardado: " + destino.getName()
+                    + " (" + bytes.length + " bytes).");
+        } catch (Exception e) {
+            estadoFiltroVisual.setText("No se pudo guardar: " + e.getMessage());
         }
     }
 
@@ -468,23 +539,49 @@ public class VistaEscritorio extends Application {
             java.awt.image.BufferedImage base = javax.imageio.ImageIO.read(
                     new ByteArrayInputStream(bytesImagenActual));
             if (base == null) {
-                estadoFiltroVisual.setText("No se pudo decodificar la imagen.");
+                estadoFiltroVisual.setText("Este formato se puede ver pero no admite"
+                        + " previsualizar filtros; usa Descargar archivo.");
                 return;
             }
-            java.awt.image.BufferedImage out = switch (opcion) {
-                case "Grises" -> Imagenes.aGrises(base);
-                case "Sepia" -> Imagenes.aSepia(base);
-                case "Giro 180" -> Imagenes.girar(base, 180);
-                case "Brillo x1.25" -> Imagenes.ajustarBrillo(base, 1.25);
-                case "Reducida 50%" -> Imagenes.reducir(base, 0.5);
-                default -> Imagenes.nuevaCopia(base);
-            };
+            java.awt.image.BufferedImage out = aplicarFiltroVista(base, opcion);
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
-            javax.imageio.ImageIO.write(out, "png", buf);
+            if (!javax.imageio.ImageIO.write(out, "png", buf)) {
+                estadoFiltroVisual.setText("No se pudo codificar el resultado del filtro.");
+                return;
+            }
             vistaMensaje.setImage(new Image(new ByteArrayInputStream(buf.toByteArray())));
             estadoFiltroVisual.setText("Filtro aplicado en vista: " + opcion + " (no persiste).");
         } catch (Exception e) {
             estadoFiltroVisual.setText("No se pudo aplicar el filtro: " + e.getMessage());
+        }
+    }
+
+    /** Núcleo puro de la previsualización (testeable sin JavaFX). */
+    static java.awt.image.BufferedImage aplicarFiltroVista(
+            java.awt.image.BufferedImage base, String opcion) {
+        if (base == null) {
+            throw new IllegalArgumentException("imagen base vacía");
+        }
+        String o = opcion == null ? "" : opcion;
+        return switch (o) {
+            case "Grises" -> Imagenes.aGrises(base);
+            case "Sepia" -> Imagenes.aSepia(base);
+            case "Giro 180" -> Imagenes.girar(base, 180);
+            case "Brillo x1.25" -> Imagenes.ajustarBrillo(base, 1.25);
+            case "Reducida 50%" -> Imagenes.reducir(base, 0.5);
+            default -> Imagenes.nuevaCopia(base);
+        };
+    }
+
+    /** true si ImageIO puede abrirlo (requisito para previsualizar filtros). */
+    private static boolean decodificableParaFiltros(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) {
+            return false;
+        }
+        try {
+            return javax.imageio.ImageIO.read(new ByteArrayInputStream(bytes)) != null;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -674,14 +771,11 @@ public class VistaEscritorio extends Application {
     private void refrescarSeguro() {
         try {
             refrescar();
-            // Las pestañas de datos tambien se redibujan solas si estan a la vista.
-            if (tabs != null) {
-                var sel = tabs.getSelectionModel().getSelectedItem();
-                if (sel == tabInformes) {
-                    actualizarInforme();
-                } else if (sel == tabMensajes) {
-                    actualizarMensajes();
-                }
+            // Informes se redibuja solo si esta a la vista; Mensajes es manual
+            // (Actualizar) para no borrar la seleccion, el preview ni el filtro.
+            if (tabs != null
+                    && tabs.getSelectionModel().getSelectedItem() == tabInformes) {
+                actualizarInforme();
             }
         } catch (RuntimeException e) {
             // la vista no tumba: el error ya queda en logs

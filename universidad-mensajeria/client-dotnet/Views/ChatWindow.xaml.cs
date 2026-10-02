@@ -609,14 +609,6 @@ namespace Mensajeria.Views
             }
         }
 
-        private async void BtnDifundir_Click(object sender, RoutedEventArgs e)
-        {
-            string texto = Microsoft.VisualBasic.Interaction.InputBox("Mensaje de difusión:", "Difundir");
-            if (string.IsNullOrWhiteSpace(texto)) return;
-            try { await _fachada.DifundirAsync(texto); }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "No se pudo difundir"); }
-        }
-
         private void BtnSalir_Click(object sender, RoutedEventArgs e)
         {
             VolverAlInicio();
