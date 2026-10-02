@@ -39,6 +39,8 @@ namespace Mensajeria.Views
 
         public string Id { get; init; } = "";
         public string Encabezado { get; init; } = "";
+        public string Autor { get; init; } = "";
+        public string Fecha { get; init; } = "";
         public string Contenido { get; init; } = "";
         public string Estado { get; init; } = "";
         public string ArchivoId { get; init; } = "";
@@ -256,7 +258,9 @@ namespace Mensajeria.Views
                 _mensajes.Add(new MensajeVM
                 {
                     Id = Valor(row, "id"),
-                    Encabezado = $"{identidad} · {Valor(row, "fechaEnvio")}",
+                    Encabezado = identidad,
+                    Autor = identidad,
+                    Fecha = FormatearFecha(Valor(row, "fechaEnvio")),
                     Contenido = esImagen ? "" : Valor(row, "contenido"),
                     Estado = propio ? EstadoVisible(estadoBruto) : "",
                     EsImagen = esImagen,
@@ -396,7 +400,8 @@ namespace Mensajeria.Views
         private void BtnResponder_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button { DataContext: MensajeVM vm }) return;
-            string autor = vm.Encabezado.Split('·')[0].Trim();
+            string autor = string.IsNullOrWhiteSpace(vm.Autor)
+                ? vm.Encabezado.Split('·')[0].Trim() : vm.Autor;
             string extracto = (vm.EsImagen || vm.EsArchivo) && !string.IsNullOrEmpty(vm.NombreArchivo)
                 ? vm.NombreArchivo : vm.Contenido;
             if (extracto.Length > 120) extracto = extracto[..120] + "…";
@@ -657,6 +662,15 @@ namespace Mensajeria.Views
 
         private static string Valor(Dictionary<string, object> fila, string clave) =>
             fila.TryGetValue(clave, out var valor) && valor != null ? valor.ToString() ?? "" : "";
+
+        /// <summary>Fecha corta local "aaaa-MM-dd HH:mm" como el cliente Python.</summary>
+        private static string FormatearFecha(string crudo)
+        {
+            if (!string.IsNullOrWhiteSpace(crudo)
+                && DateTimeOffset.TryParse(crudo, out var instante))
+                return instante.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            return (crudo ?? "").Length <= 16 ? crudo ?? "" : crudo!.Substring(0, 16);
+        }
 
         private static string? GetString(Dictionary<string, JsonElement> fila, string clave) =>
             fila.TryGetValue(clave, out var valor) && valor.ValueKind == JsonValueKind.String

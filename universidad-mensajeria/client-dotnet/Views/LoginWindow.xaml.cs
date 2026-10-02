@@ -38,7 +38,7 @@ namespace Mensajeria.Views
                 }
                 txtHost.Text = host;
                 txtPuerto.Text = puerto;
-                txtServidor.Text = $"Servidor actual: {host}:{puerto} · client.properties (§5.2).";
+                txtServidor.Text = $"Servidor actual: {host}:{puerto} · se configura en client.properties.";
             }
             catch
             {
@@ -72,7 +72,7 @@ namespace Mensajeria.Views
                 }
                 else
                 {
-                    txtError.Text = "✖ Usuario no registrado o datos incorrectos (LOGIN_RESPUESTA exito=false).";
+                    txtError.Text = "✖ Usuario no registrado o datos incorrectos.";
                     bordeError.Visibility = Visibility.Visible;
                     _fachada.Desconectar();
                 }

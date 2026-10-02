@@ -657,15 +657,26 @@ namespace Mensajeria.Fachada
 
         public string? ContenidoImagenLocal(string idMensaje) => Historial?.ContenidoPorId(idMensaje);
 
-        /// <summary>Historial offline en orden cronologico (el contrato va DESC).</summary>
+        /// <summary>Historial en orden cronologico (los mas nuevos abajo, como Python).
+        /// Ordena por instante real y no por texto: los formatos mezclados
+        /// (UTC con Z vs hora local) rompen el ORDER BY alfabetico.</summary>
         public List<Dictionary<string, object>> CargarHistorial(string otroUsuario, int offset = 0)
         {
             if (UsuarioActual == null) throw new InvalidOperationException("inicia sesion primero");
             var pagina = Historial?.PaginaConversacion(UsuarioActual, otroUsuario, 50, offset)
                 ?? new List<Dictionary<string, object>>();
-            pagina.Reverse();
+            pagina.Sort((a, b) => CompararFecha(
+                a.TryGetValue("fechaEnvio", out var fa) ? fa?.ToString() : null,
+                b.TryGetValue("fechaEnvio", out var fb) ? fb?.ToString() : null));
             return pagina;
         }
+
+        private static int CompararFecha(string? x, string? y) =>
+            ParseRobusto(x).CompareTo(ParseRobusto(y));
+
+        private static DateTimeOffset ParseRobusto(string? s) =>
+            !string.IsNullOrWhiteSpace(s) && DateTimeOffset.TryParse(s, out var dto)
+                ? dto.ToUniversalTime() : DateTimeOffset.MaxValue;
 
         public async Task<int> TraerHistorialAsync(string otroUsuario, int pagina)
         {

@@ -17,7 +17,7 @@
                 </StackPanel>
             </Border>
             <StackPanel Margin="28,18,28,24">
-                <TextBlock Text="El alta de usuarios es solo en usuarios_iniciales.csv del servidor (RF-C06)."
+                <TextBlock Text="El alta de usuarios la hace el administrador en el servidor."
                            Foreground="#64748B" FontStyle="Italic" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10"/>
                 <TextBlock Text="Código universitario" FontWeight="SemiBold" Margin="0,0,0,5"/>
                 <ui:TextBox x:Name="txtCodigo" PlaceholderText="A001234567" ClearButtonEnabled="True" Margin="0,0,0,12"/>

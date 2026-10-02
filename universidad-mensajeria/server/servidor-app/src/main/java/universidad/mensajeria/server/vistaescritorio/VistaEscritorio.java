@@ -179,7 +179,7 @@ public class VistaEscritorio extends Application {
         kpiSistema = new Label();
         kpiSistema.getStyleClass().add("kpi");
         HBox kpis = new HBox(8, kpiEstado, kpiConexiones, kpiSistema);
-        Label ayuda = new Label("Auto-refresco cada 5 s (Observer RF-S39–S42). "
+        Label ayuda = new Label("Auto-refresco cada 5 s. "
                 + "MySQL y uploads deben estar en ●; SERVIDOR es el buzón del sistema.");
         ayuda.setWrapText(true);
         VBox caja = new VBox(8, kpis, estado, ayuda);
@@ -665,7 +665,7 @@ public class VistaEscritorio extends Application {
             estadoPool.setText("Pool red " + e.trabajadoresOcupados() + "/"
                     + e.trabajadoresTotal() + " (libres " + e.trabajadoresDisponibles() + ")"
                     + " · cola " + e.mensajesEnCola() + " · procesados "
-                    + e.mensajesProcesados() + " (RF-S49).");
+                    + e.mensajesProcesados() + ".");
         }
         tabla.getItems().setAll(f.usuariosRegistrados());
         conectados.getItems().setAll(f.usuariosConectados());

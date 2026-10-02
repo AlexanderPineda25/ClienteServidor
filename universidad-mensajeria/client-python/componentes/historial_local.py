@@ -88,6 +88,66 @@ class HistorialLocal:
                    'BROADCAST', 'SYNC_LOGIN')
             """, (estado, otro, yo))
 
+    def buscar_equivalente(self, origen, destino, tipo, hash_sha256="",
+                             contenido="", fecha_envio="", ventana_seg=300):
+        """Id local de un mensaje ya conocido (vivo) igual al remoto.
+
+        La entrega en vivo usa el UUID del remitente y el historial remoto
+        el id numerico del servidor: sin esto cada fetch remoto duplicaba
+        las burbujas. Para TEXTO/BROADCAST/SYNC se compara contenido exacto
+        con ventana de tiempo; para IMAGEN/ARCHIVO solo hash (los
+        placeholders "[Imagen]"/"[Archivo]" no identifican nada).
+        Retorna id_mensaje o None.
+        """
+        if tipo in ("MENSAJE_IMAGEN", "MENSAJE_ARCHIVO"):
+            if not hash_sha256:
+                return None
+            criterio = "hash_sha256 = ?"
+            params = [origen, destino, origen, destino, tipo, hash_sha256]
+        else:
+            texto = contenido or ""
+            if not texto or texto.startswith("[Imagen]") \
+                    or texto.startswith("[Archivo]"):
+                return None
+            criterio = ("contenido = ? AND ABS(strftime('%s', fecha_envio)"
+                        " - strftime('%s', ?)) < ?")
+            params = [origen, destino, origen, destino, tipo,
+                      texto, fecha_envio or "", ventana_seg]
+        with self.db.conexion() as conn:
+            fila = conn.execute(
+                f"""SELECT id_mensaje FROM historial_local
+                    WHERE ((origen = ? AND destino = ?)
+                        OR (origen = ? AND destino = ?))
+                      AND tipo = ? AND {criterio}
+                    ORDER BY fecha_envio DESC LIMIT 1""",
+                params).fetchone()
+            return fila[0] if fila else None
+
+    def actualizar_metadatos_remotos(self, id_mensaje, hash_sha256=None,
+                                     num_caracteres=None, num_palabras=None,
+                                     nombre_archivo=None, tamano_archivo=None,
+                                     archivo_id=None, estado=None):
+        """Completa la fila viva con metadatos del historial remoto (sin duplicar)."""
+        with self.db.conexion() as conn:
+            conn.execute("""
+                UPDATE historial_local SET
+                    hash_sha256 = COALESCE(?, hash_sha256),
+                    num_caracteres = COALESCE(?, num_caracteres),
+                    num_palabras = COALESCE(?, num_palabras),
+                    nombre_archivo = COALESCE(?, nombre_archivo),
+                    tamano_archivo = COALESCE(?, tamano_archivo),
+                    archivo_id = COALESCE(?, archivo_id),
+                    estado = CASE
+                        WHEN historial_local.estado = 'LEIDO' OR ? = 'LEIDO' THEN 'LEIDO'
+                        WHEN historial_local.estado = 'ENTREGADO'
+                             AND ? IN ('PENDIENTE', 'ENVIADO') THEN 'ENTREGADO'
+                        WHEN historial_local.estado = 'ENVIADO' AND ? = 'PENDIENTE' THEN 'ENVIADO'
+                        ELSE COALESCE(?, historial_local.estado) END
+                WHERE id_mensaje = ?
+            """, (hash_sha256 or None, num_caracteres, num_palabras,
+                  nombre_archivo or None, tamano_archivo,
+                  archivo_id or None, estado, estado, estado, estado, id_mensaje))
+
     def contar_conversacion(self, user1, user2):
         """HISTORIAL_LOCAL.md §2: conteo para totalPaginas."""
         with self.db.conexion() as conn:

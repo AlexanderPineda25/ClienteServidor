@@ -403,6 +403,13 @@ class ChatWindow(QMainWindow):
 
         if tipo == "directorio":
             seleccionado, usuarios, no_leidos, error_red = resultado
+            propio = next((u for u in usuarios if u.get("codigo") == self.codigo), None)
+            if propio is not None:
+                nombre_propio = " ".join(filter(None, [propio.get("nombres"),
+                                                        propio.get("apellidos")])).strip()
+                identidad_propia = (f"{nombre_propio} [{self.codigo}]"
+                                    if nombre_propio else self.codigo)
+                self.lbl_sesion.setText(f"Mensajería\nSesión activa · {identidad_propia}")
             self._directorio = [u for u in usuarios if u.get("codigo") != self.codigo]
             self._no_leidos = dict(no_leidos or {})
             self._filtrar_usuarios(seleccionado=seleccionado)
@@ -410,7 +417,7 @@ class ChatWindow(QMainWindow):
             sin_red = error_red is not None
             self.lbl_offline.setVisible(sin_red)
             if sin_red:
-                self.lbl_estado_red.setText("Sin conexión: directorio local · cola activa (RF-C16)")
+                self.lbl_estado_red.setText("Sin conexión: directorio local · cola activa")
                 self.lbl_estado_red.setStyleSheet("color: #B45309; font-size: 11px; font-weight: 700;")
             else:
                 self.lbl_estado_red.setText(f"{online} contactos en línea")

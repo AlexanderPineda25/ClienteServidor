@@ -243,7 +243,7 @@ class MensajeriaE2ETest {
 
             Mensaje aviso = destino.leerSalvoSync();
             assertEquals(TipoMensaje.BROADCAST, aviso.tipo());
-            assertEquals("ADMINISTRADOR", aviso.remitente());
+            assertEquals("SERVIDOR", aviso.remitente());
             assertEquals("Mantenimiento programado", aviso.contenido());
         }
     }

@@ -39,7 +39,7 @@ class LoginWindow(QWidget):
         header_layout.addWidget(subtitle)
         layout.addWidget(header)
 
-        nota = QLabel("El alta de usuarios es solo en usuarios_iniciales.csv del servidor (RF-C06).")
+        nota = QLabel("El alta de usuarios la hace el administrador en el servidor.")
         nota.setStyleSheet("color: #64748B; font-size: 11px; font-style: italic;")
         nota.setWordWrap(True)
         layout.addWidget(nota)
@@ -87,7 +87,7 @@ class LoginWindow(QWidget):
             actual = f"{host_inicial}:{puerto_inicial}"
         except Exception:
             actual = "localhost:5000"
-        self.lbl_servidor = QLabel(f"Servidor actual: {actual} · client.properties (§5.2).")
+        self.lbl_servidor = QLabel(f"Servidor actual: {actual} · se configura en client.properties.")
         self.lbl_servidor.setStyleSheet("color: #475569; font-size: 11px;")
         self.lbl_servidor.setWordWrap(True)
         layout.addWidget(self.lbl_servidor)
@@ -160,7 +160,7 @@ class LoginWindow(QWidget):
             else:
                 self.lbl_error.setText(
                     f"✖ Usuario no registrado o datos incorrectos: "
-                    f"{respuesta.get('mensajeError', 'LOGIN_RESPUESTA exito=false')}"
+                    f"{respuesta.get('mensajeError', 'verifica el código y la contraseña')}"
                 )
                 self.lbl_error.setVisible(True)
         except Exception as error:

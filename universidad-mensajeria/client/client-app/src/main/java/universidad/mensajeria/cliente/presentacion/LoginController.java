@@ -42,7 +42,7 @@ public final class LoginController {
             campoHost.setText(config.host());
             campoPuerto.setText(String.valueOf(config.puerto()));
             etiquetaServidor.setText("Servidor actual: " + config.host() + ":" + config.puerto()
-                    + " · se configura en client.properties (§5.2).");
+                    + " · se configura en client.properties.");
         } catch (Exception e) {
             etiquetaServidor.setText("Servidor: localhost:5000 (client.properties no legible).");
             campoHost.setText("localhost");
@@ -105,8 +105,7 @@ public final class LoginController {
                 spinner.setManaged(false);
                 botonEntrar.setDisable(false);
                 mostrarError("Usuario no registrado o datos incorrectos"
-                        + (causa != null && causa.getMessage() != null ? ": " + causa.getMessage() : "")
-                        + " (LOGIN_RESPUESTA exito=false).");
+                        + (causa != null && causa.getMessage() != null ? ": " + causa.getMessage() : ""));
             });
         });
         new Thread(tarea, "login-fondo").start();

@@ -661,7 +661,7 @@ public final class ChatController {
                 detener();
                 fachada.cerrarSesionRemota();
                 ClienteApp.avisarProximoLogin("Sesión cerrada por inactividad (10 min), inicie de nuevo. "
-                        + motivo + " (CLOSE_NOTICE RF-C08).");
+                        + motivo);
                 try { ClienteApp.mostrarLogin(); }
                 catch (Exception e) { estado("No se pudo volver al inicio: " + mensaje(e)); }
                 return;

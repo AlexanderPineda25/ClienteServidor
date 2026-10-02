@@ -182,6 +182,11 @@ public final class FragmentoArchivoCaso {
                             t.nombreArchivo, t.tamanoTotal, t.totalPartes,
                             sesion.codigo(), t.destinatario),
                     sesion.codigo(), ip, null);
+            // ACK de recepcion encolada (INICIO/PARTE ya responden igual): sin esto
+            // el remitente quedaba esperando FIN para siempre (timeout) aunque el
+            // archivo si habia llegado. El archivoId real viaja al destinatario
+            // en el MENSAJE_ARCHIVO entregado.
+            responder.exito(sesion, idSolicitud, TipoMensaje.ACK);
         }
     }
 

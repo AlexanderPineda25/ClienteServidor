@@ -61,6 +61,14 @@ public class FachadaDeServicios implements Fachada, SalidaClienteServidor.Fachad
 
     private static final Logger LOG = LoggerFactory.getLogger(FachadaDeServicios.class);
 
+    /**
+     * Cuenta buzón del sistema: remitente de la difusión administrativa y
+     * destinatario de los mensajes que los usuarios envían al servidor.
+     * Existe en usuarios_iniciales.csv, así la difusión persiste por usuario
+     * y los desconectados la reciben al reconectar (pendientes/SYNC_LOGIN).
+     */
+    static final String CUENTA_SISTEMA = "SERVIDOR";
+
     private final InterfazProtocoloComunicacion protocolo;
     private final java.util.function.Supplier<InterfazClienteServidor> clienteServidor;
     private final InterfazServiciosDisponibles servicios;
@@ -157,7 +165,7 @@ public class FachadaDeServicios implements Fachada, SalidaClienteServidor.Fachad
                 .tipo(TipoMensaje.BROADCAST)
                 .id(java.util.UUID.randomUUID().toString())
                 .fechaHora(LocalDateTime.now().toString())
-                .remitente("ADMINISTRADOR")
+                .remitente(CUENTA_SISTEMA)
                 .contenido(contenido.trim())
                 .ipRemitente(RedLocal.ipLocal())
                 .build());
@@ -421,30 +429,51 @@ public class FachadaDeServicios implements Fachada, SalidaClienteServidor.Fachad
     }
 
     private void procesarDifusion(Mensaje trama, IdSesion origen) {
-        if ("ADMINISTRADOR".equals(trama.remitente())) {
-            Mensaje entrega = Mensaje.builder()
-                    .tipo(TipoMensaje.BROADCAST)
-                    .id(trama.id())
-                    .fechaHora(trama.fechaHora())
-                    .remitente(trama.remitente())
-                    .contenido(trama.contenido())
-                    .ipRemitente(trama.ipRemitente())
-                    .build();
-            int enviadas = 0;
-            for (String codigo : conexiones.codigosConectados()) {
-                for (IdSesion sesion : conexiones.sesionesDe(codigo)) {
-                    try {
-                        protocolo.enviar(sesion, entrega);
-                        enviadas++;
-                    } catch (Exception e) {
-                        LOG.warn("No se pudo difundir aviso administrativo a {}: {}",
-                                codigo, e.getMessage());
-                    }
-                }
+        if (CUENTA_SISTEMA.equals(trama.remitente()) || "ADMINISTRADOR".equals(trama.remitente())) {
+            // Difusión del servidor A TODOS los registrados (no solo conectados):
+            // se persiste una copia por usuario (los desconectados la reciben
+            // por pendientes/SYNC_LOGIN) y se entrega en vivo a las sesiones vivas.
+            List<String> destinos = usuarios.listar().stream()
+                    .map(u -> u.codigo())
+                    .filter(codigo -> !CUENTA_SISTEMA.equalsIgnoreCase(codigo))
+                    .sorted()
+                    .toList();
+            List<CompletableFuture<?>> futuros = new ArrayList<>();
+            List<String> fallidos = new ArrayList<>();
+            for (String codigo : destinos) {
+                futuros.add(mensajes.procesarTexto(CUENTA_SISTEMA, codigo,
+                                trama.contenido(), trama.ipRemitente())
+                        .thenAccept(dto -> {
+                            Mensaje entrega = Mensaje.builder()
+                                    .tipo(TipoMensaje.BROADCAST)
+                                    .id(trama.id())
+                                    .fechaHora(LocalDateTime.now().toString())
+                                    .remitente(CUENTA_SISTEMA)
+                                    .contenido(trama.contenido())
+                                    .ipRemitente(trama.ipRemitente())
+                                    .build();
+                            entregar(codigo, entrega);
+                        })
+                        .exceptionally(fallo -> {
+                            synchronized (fallidos) {
+                                fallidos.add(codigo);
+                            }
+                            LOG.warn("No se pudo persistir difusion {} -> {}: {}",
+                                    CUENTA_SISTEMA, codigo, fallo.getMessage());
+                            return null;
+                        }));
             }
-            eventos.registrar(TipoAccion.BROADCAST, "Difusion administrativa enviada a "
-                    + enviadas + " sesiones", null, trama.ipRemitente(), trama.id());
-            LOG.info("Difusion administrativa {} enviada a {} sesiones", trama.id(), enviadas);
+            CompletableFuture.allOf(futuros.toArray(new CompletableFuture[0]))
+                    .thenRun(() -> {
+                        int sesiones = conexiones.totalSesiones();
+                        eventos.registrar(TipoAccion.BROADCAST,
+                                "Difusion administrativa a " + destinos.size()
+                                        + " usuarios (" + sesiones + " sesiones vivas"
+                                        + ", fallos persistencia: " + fallidos.size() + ")",
+                                null, trama.ipRemitente(), trama.id());
+                        LOG.info("Difusion administrativa {} a {} usuarios (fallos: {})",
+                                trama.id(), destinos.size(), fallidos.size());
+                    });
             return;
         }
         List<String> destinos = conexiones.codigosConectados();

@@ -278,35 +278,44 @@ class FachadaCliente:
             tamano_archivo=len(datos), enviado=1, descargado=1, estado="PENDIENTE")
 
         try:
-            # ARCHIVO_INICIO
-            self.conexion.pedir({
+            # ARCHIVO_INICIO (claves del contrato: nombreArchivo, tamanoArchivo…)
+            inicio = self.conexion.pedir({
                 "id": id_msg,
                 "tipo": "ARCHIVO_INICIO",
                 "remitente": self.codigo_actual,
                 "destinatario": destinatario,
-                "nombre": nombre,
+                "nombreArchivo": nombre,
                 "mime": mime,
-                "tamano": len(datos),
+                "tamanoArchivo": len(datos),
                 "totalPartes": total_partes,
                 "fechaHora": fecha,
             })
+            self._lanzar_si_error(inicio, "inicio de transferencia rechazado")
 
-            # ARCHIVO_PARTE × N
+            # ARCHIVO_PARTE × N (archivoId = id de transferencia, una en vuelo)
             for i, parte in enumerate(partes):
-                self.conexion.pedir({
-                    "id": id_msg,
+                parte_resp = self.conexion.pedir({
+                    "id": f"{id_msg}#p{i}",
                     "tipo": "ARCHIVO_PARTE",
-                    "indice": i,
-                    "base64": base64.b64encode(parte).decode("utf-8"),
+                    "remitente": self.codigo_actual,
+                    "archivoId": id_msg,
+                    "indiceParte": i,
+                    "contenidoImagen": base64.b64encode(parte).decode("utf-8"),
+                    "fechaHora": fecha,
                 })
+                self._lanzar_si_error(parte_resp, f"parte {i + 1}/{total_partes} rechazada")
                 if on_progreso:
                     on_progreso(i + 1, total_partes)
 
-            # ARCHIVO_FIN — el servidor valida SHA-256 y responde ACK/ERROR
+            # ARCHIVO_FIN — el servidor valida SHA-256, encola y responde ACK.
+            # El archivoId real lo recibe el destinatario en el MENSAJE_ARCHIVO.
             resp = self.conexion.pedir({
-                "id": id_msg,
+                "id": f"{id_msg}#fin",
                 "tipo": "ARCHIVO_FIN",
-                "sha256": sha256,
+                "remitente": self.codigo_actual,
+                "archivoId": id_msg,
+                "hashSha256": sha256,
+                "fechaHora": fecha,
             })
         except (ConnectionError, TimeoutError, OSError):
             self.historial.guardar_pendiente(
@@ -438,10 +447,26 @@ class FachadaCliente:
             es_img = (tipo == "MENSAJE_IMAGEN")
             es_arch = (tipo == "MENSAJE_ARCHIVO")
             contenido_hist = "[Imagen]" if es_img else ("[Archivo]" if es_arch else fila.get("contenido"))
+            fecha_remota = fila.get("fechaEnvio") or datetime.datetime.now().isoformat()
+            # La fila viva (UUID del remitente) y la remota (id numerico del
+            # servidor) son el mismo mensaje: fusionar, no duplicar burbujas.
+            conocido = self.historial.buscar_equivalente(
+                origen, destino, tipo, fila.get("hashSha256") or "",
+                fila.get("contenido") or "", fecha_remota)
+            if conocido:
+                self.historial.actualizar_metadatos_remotos(
+                    conocido, hash_sha256=fila.get("hashSha256") or None,
+                    num_caracteres=fila.get("numCaracteres"),
+                    num_palabras=fila.get("numPalabras"),
+                    nombre_archivo=fila.get("nombreArchivo") or None,
+                    tamano_archivo=fila.get("tamanoArchivo"),
+                    archivo_id=fila.get("archivoId"),
+                    estado="ENVIADO" if propio else "ENTREGADO")
+                continue
             self.historial.guardar_mensaje(
                 id_mensaje, origen, destino, tipo,
                 contenido_hist,
-                fila.get("fechaEnvio") or datetime.datetime.now().isoformat(),
+                fecha_remota,
                 hash_sha256=fila.get("hashSha256") or "",
                 num_caracteres=fila.get("numCaracteres") or 0,
                 num_palabras=fila.get("numPalabras") or 0,
