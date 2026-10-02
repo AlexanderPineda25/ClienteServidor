@@ -68,6 +68,25 @@ local. Cuentas diferentes quedan aisladas; varias instancias del mismo código c
 Los archivos H2 no se copian a otras máquinas para sincronizar mensajes: el servidor conserva el
 historial remoto.
 
+## Uso
+
+- Acceso: solo autenticación con código y contraseña; no hay registro en la
+  aplicación (el alta la hace el administrador en el servidor). La ventana
+  muestra el servidor y puerto actuales (de `client.properties`, con opción
+  de recordarlos) y avisa si la sesión se cerró por inactividad (10 min).
+- Directorio: todos los usuarios visibles como `Nombre Apellido [CÓDIGO]`,
+  con presencia en línea/desconectado, buscador y filtro Todos/Conectados;
+  el contacto `Sistema Mensajeria [SERVIDOR]` es el buzón del servidor
+  (sirve para escribirle y recibe sus difusiones).
+- Chat 1 a 1: redacción de texto más adjunto (imagen o archivo genérico
+  hasta 50 MB, con vista previa) y un único botón Enviar —sin botón de
+  difundir en este cliente—. Texto e imagen juntos se envían como dos
+  mensajes. Los estados son `✓` enviado, `✓✓` entregado y `✓✓` azul leído;
+  se puede responder citando y descargar archivos recibidos.
+- Sin red aparece el banner ámbar y los mensajes quedan en cola local con
+  reintento automático; un rechazo definitivo del servidor marca ERROR en
+  vez de reintentar para siempre.
+
 ## Red y solución de problemas
 
 - Permitir salida TCP desde este equipo a `IP_SERVIDOR:5000`; no abrir puertos entrantes del cliente.

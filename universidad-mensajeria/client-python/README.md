@@ -58,6 +58,19 @@ migra de manera aditiva el archivo legado compartido si existe. No borres ese ar
 iniciar por primera vez. `store/schema-local.sql` está incluido para que la migración y el primer
 arranque también funcionen cuando solo se distribuye esta carpeta.
 
+## Funcionalidad
+
+- Acceso con código y contraseña (sin registro); la ventana muestra servidor
+  y puerto con opción de recordarlos.
+- El directorio trae todos los usuarios del servidor como
+  `Nombre Apellido [CÓDIGO]`, con filtro Todos/Conectados, buscador y conteo
+  de no leídos; la sesión indica el nombre propio. El historial remoto se
+  fusiona sin duplicar burbujas ya recibidas en vivo.
+- Enviar admite texto, imagen o archivo genérico hasta 50 MB por el
+  protocolo fragmentado (`ARCHIVO_INICIO/PARTE/FIN`); el `FIN` recibe `ACK`
+  del servidor. Los archivos recibidos se descargan bajo demanda.
+- La difusión del servidor aparece como mensaje de `SERVIDOR`.
+
 ## Uso y solución de problemas
 
 - El registro por red está eliminado; solicita al administrador código y contraseña.

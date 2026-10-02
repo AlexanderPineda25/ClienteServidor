@@ -146,6 +146,19 @@ Los archivos quedan bajo `uploads/Nombre Apellido [CODIGO]/<SHA-256>/`; MySQL gu
 y el identificador de archivo. El historial entrega ese identificador sin incluir bytes; el cliente
 solicita la descarga por TCP cuando necesita mostrar la imagen.
 
+Los archivos genéricos llegan fragmentados (`ARCHIVO_INICIO/PARTE/FIN`, partes de 1 MiB,
+tope 50 MB) y se reensamblan con verificación SHA-256; al completar el `FIN` el servidor
+responde `ACK` (antes no respondía y el remitente quedaba en espera). La cuenta `SERVIDOR`
+(`Sistema Mensajeria`, sin inicio de sesión) es el buzón del sistema: recibe los mensajes
+que los usuarios le envían y firma la difusión administrativa.
+
+La difusión administrativa (`Difundir` en consola o vista de escritorio) llega a todos los
+usuarios registrados, no solo a los conectados: persiste una copia por usuario y entrega en
+vivo a las sesiones activas; quien estaba desconectado la recibe al reconectar. La vista de
+escritorio ofrece las pestañas Estado (con indicadores), Conectados, Usuarios, Mensajes
+(detalle con contenido, imagen y previsualización de filtros), Informes (con exportar CSV),
+Logs en vivo, Pool y Difundir.
+
 ## Inspección con DBeaver
 
 Para el MySQL de desarrollo, configura driver MySQL, host `localhost`, puerto `3307`, base

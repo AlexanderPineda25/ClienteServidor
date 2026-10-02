@@ -69,6 +69,13 @@ conservar archivos locales.
 ## Operación
 
 - El alta de usuarios se realiza en el servidor; la UI no ofrece registro.
+- El acceso muestra servidor y puerto (de `client.properties`).
+- El directorio trae todos los usuarios como `Nombre Apellido [CÓDIGO]`,
+  con filtro Todos/Conectados y buscador. La conversación va en orden
+  cronológico (los nuevos abajo) y cada burbuja muestra la fecha abajo
+  (`aaaa-MM-dd HH:mm`) junto a Responder.
+- Se puede adjuntar con los botones o arrastrando imágenes y archivos
+  (hasta 50 MB) sobre la redacción o la lista de mensajes.
 - Si no hay conexión, prueba `Test-NetConnection IP_SERVIDOR -Port 5000` antes de reinstalar.
 - Actualiza el directorio publicado conservando `client.properties`, SQLite del perfil e imágenes.
 - Enviar texto, imagen o ambos no implica que la otra persona ya lo recibió: confirma los estados
